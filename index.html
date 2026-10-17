@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JX JJ Fam Jeju</title>
+<meta name="theme-color" content="#F2F3F1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Jeju Trip">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-column phone app. Sticky header + day strip, Next card, compact timeline, fixed bottom tabs.
+   Palette: Jeju basalt (ink/surfaces), gamgyul tangerine (accent), coastal sea green (go/navigate). */
+:root {
+  --bg: #F2F3F1;
+  --surface: #FFFFFF;
+  --surface-2: #E7E9E6;
+  --ink: #171B1A;
+  --muted: #5E6763;
+  --line: #D6DAD6;
+  --tangerine: #E8761A;
+  --tangerine-soft: #FCE7D4;
+  --sea: #13706A;
+  --sea-ink: #FFFFFF;
+  --warn: #A4400B;
+  --warn-soft: #FBE3D3;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 14px;
+  --scale: 1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111413; --surface: #1B1F1E; --surface-2: #252A28; --ink: #EEF1EF; --muted: #9AA4A0;
+    --line: #2F3532; --tangerine: #F59A45; --tangerine-soft: #3A2716; --sea: #3FB3A9; --sea-ink: #0B1413;
+    --warn: #F7A06A; --warn-soft: #3A2316; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111413; --surface: #1B1F1E; --surface-2: #252A28; --ink: #EEF1EF; --muted: #9AA4A0;
+  --line: #2F3532; --tangerine: #F59A45; --tangerine-soft: #3A2716; --sea: #3FB3A9; --sea-ink: #0B1413;
+  --warn: #F7A06A; --warn-soft: #3A2316; color-scheme: dark;
+}
+html.big { --scale: 1.22; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body);
+  font-size: calc(16px * var(--scale)); line-height: 1.4; -webkit-text-size-adjust: 100%;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+}
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--tangerine); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); letter-spacing: .02em; }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding: 10px 16px 6px; }
+.top-row { display: flex; align-items: center; gap: 10px; }
+.top h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: calc(1.3rem * var(--scale)); letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .sub { color: var(--muted); font-size: .85em; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; min-width: 40px; height: 40px; padding: 0 10px; display: inline-grid; place-items: center; cursor: pointer; font-weight: 700; }
+.icon-btn svg { width: 20px; height: 20px; }
+.preview { margin: 0 16px 6px; padding: 6px 10px; border-radius: 10px; background: var(--tangerine-soft); font-size: .8em; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.preview select { font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+
+/* Day strip */
+.days { display: flex; gap: 6px; overflow-x: auto; padding: 6px 16px 8px; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.day { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 5px 10px; text-align: center; cursor: pointer; min-width: 54px; }
+.day b { display: block; font-family: var(--font-display); font-size: 1.15em; line-height: 1.1; }
+.day small { color: var(--muted); font-size: .72em; text-transform: uppercase; letter-spacing: .06em; }
+.day[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.day[aria-pressed="true"] small { color: inherit; opacity: .75; }
+.day.today:not([aria-pressed="true"]) { border-color: var(--tangerine); }
+
+main { padding: 0 16px; display: grid; gap: 12px; }
+.section-h { margin: 6px 0 0; font-size: .78em; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
+
+/* Next card */
+.next { background: var(--surface); border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); }
+.next .photo { aspect-ratio: 16 / 7; max-width: 100%; background: var(--surface-2); display: grid; place-items: center; position: relative; overflow: hidden; }
+.next .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.next .photo .ph { color: var(--muted); display: grid; place-items: center; gap: 4px; font-size: .8em; }
+.next .photo .ph svg { width: 36px; height: 36px; color: var(--tangerine); }
+.next .body { padding: 12px 14px 14px; display: grid; gap: 8px; }
+.eyebrow { font-size: .78em; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--tangerine); display: flex; gap: 8px; flex-wrap: wrap; }
+.next h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: calc(1.65rem * var(--scale)); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); }
+.facts b { color: var(--ink); }
+.now-line { font-size: .9em; color: var(--muted); padding: 8px 14px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tangerine); flex: 0 0 auto; box-shadow: 0 0 0 4px var(--tangerine-soft); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); text-decoration: none; font-weight: 700; cursor: pointer; }
+.btn svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.btn.go { background: var(--sea); color: var(--sea-ink); border-color: var(--sea); flex: 1 1 180px; font-size: 1.08em; }
+.btn.small { min-height: 40px; padding: 0 12px; font-size: .9em; }
+
+/* Timeline */
+.tl { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.row { display: grid; grid-template-columns: 58px 28px 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); cursor: pointer; width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-bottom: 0; }
+.row:first-child { border-top: 0; }
+.row .t { font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.row .t small { display: block; font-weight: 400; color: var(--muted); font-size: .72em; margin-top: 2px; }
+.row .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); display: grid; place-items: center; color: var(--ink); }
+.row .ic svg { width: 17px; height: 17px; }
+.row .ti { min-width: 0; }
+.row .ti b { display: block; overflow-wrap: anywhere; }
+.row .ti span { color: var(--muted); font-size: .85em; }
+.row.past { opacity: .5; }
+.row.current .ic { background: var(--tangerine); color: #fff; }
+.row.alt .ti b { font-weight: 400; }
+.chip { font-size: .7em; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+.chip.opt { background: var(--tangerine-soft); color: var(--warn); }
+.chip.who { background: transparent; border: 1px solid var(--line); }
+.detail { padding: 4px 12px 14px 12px; display: grid; gap: 10px; border-top: 1px dashed var(--line); }
+.detail img { border-radius: 10px; width: 100%; aspect-ratio: 16/8; object-fit: cover; }
+.kv { display: grid; grid-template-columns: 84px 1fr; gap: 4px 10px; font-size: .92em; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 6px 9px; font-size: .9em; font-weight: 700; }
+.empty { padding: 18px 14px; color: var(--muted); text-align: center; }
+
+/* Bookings */
+.bk { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; }
+.bk h3 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.15em; line-height: 1.15; }
+.bk .when { color: var(--muted); font-size: .9em; }
+.ref { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ref .mono { font-size: 1.2em; background: var(--surface-2); padding: 3px 8px; border-radius: 8px; overflow-wrap: anywhere; }
+.pay { font-size: .9em; }
+.pay.due { color: var(--warn); font-weight: 700; }
+
+/* Lists & info */
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.li { display: flex; gap: 12px; align-items: flex-start; padding: 11px 14px; border-top: 1px solid var(--line); }
+.li:first-child { border-top: 0; }
+.li input { width: 24px; height: 24px; accent-color: var(--sea); flex: 0 0 auto; margin: 0; }
+.li label, .li .txt { flex: 1; min-width: 0; }
+.li small { display: block; color: var(--muted); }
+.li.done label { text-decoration: line-through; color: var(--muted); }
+.phone { font-size: 1.25em; font-weight: 700; font-variant-numeric: tabular-nums; text-decoration: none; }
+
+/* Bottom tabs */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+.tab { border: 0; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px 0; font-size: .75em; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 10px; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--surface-2); }
+
+/* Gate */
+.gate { max-width: 360px; margin: 18vh auto 0; padding: 0 16px; display: grid; gap: 12px; text-align: center; }
+.gate h1 { font-family: var(--font-display); font-weight: 800; margin: 0; font-size: 1.8rem; }
+.gate input { font: inherit; font-size: 1.6rem; text-align: center; letter-spacing: .3em; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.gate .err { color: var(--warn); min-height: 1.4em; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 99px; font-size: .9em; z-index: 9; }
+@media (prefers-reduced-motion: no-preference) { .detail { animation: open .18s ease-out; } @keyframes open { from { opacity: .3; transform: translateY(-4px); } } }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- config ---------- */
+const CONFIG = {
+  api: 'https://script.google.com/macros/s/AKfycbzGT9XP-GYVCAEH7_k6XGaXVdv6rMG65L9_DfapVw8mgeZ_ZZx9Ryb9cJy3B3oM_EnjZA/exec',
+  trip: 'jeju-2026',
+  tzOffsetMin: 9 * 60 // Asia/Seoul wall clock
+};
+const KEY = 'tv:' + CONFIG.trip + ':';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- icons ---------- */
+const P = {
+  Flight: '<path d="M2 16l20-7-3-2-7 2-5-5-2 1 3 6-4 1-2-1-1 1 3 3z"/>',
+  Hotel: '<path d="M3 20V6m0 8h18v6M3 14v-3a2 2 0 012-2h4v5m4 0V9h5a3 3 0 013 3v2"/>',
+  Car: '<path d="M5 16h14M6 16v2m12-2v2M4 16l1.5-6A2 2 0 017.4 8.5h9.2a2 2 0 011.9 1.5L20 16M7.5 13h.01M16.5 13h.01"/>',
+  Nature: '<path d="M12 21v-5m0 0l-6-1 6-11 6 11-6 1z"/>',
+  Food: '<path d="M5 3v8a3 3 0 006 0V3M8 3v18M17 3c-2 2-2 6 0 8v10"/>',
+  Market: '<path d="M4 9l2-5h12l2 5M4 9h16v11H4zM4 9a2.7 2.7 0 005.3 0 2.7 2.7 0 005.4 0A2.7 2.7 0 0020 9M10 20v-5h4v5"/>',
+  Activity: '<circle cx="12" cy="13" r="7"/><path d="M12 6V3m-2 1h4"/>',
+  Drive: '<path d="M3 17c4 0 4-8 9-8s5 8 9 8M12 3v2m0 14v2"/>',
+  nav: '<path d="M3 11l18-8-8 18-2-8z"/>',
+  phone: '<path d="M5 3h4l2 5-3 2a12 12 0 006 6l2-3 5 2v4a2 2 0 01-2 2A18 18 0 013 5a2 2 0 012-2z"/>',
+  doc: '<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6m-6 4h6"/>',
+  today: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/>',
+  book: '<path d="M4 7h16v12H4zM9 7V5h6v2M4 12h16"/>',
+  list: '<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.01"/>',
+  refresh: '<path d="M20 12a8 8 0 11-3-6.2M20 4v5h-5"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V5a1 1 0 011-1h11"/>'
+};
+const icon = (n) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[n] || P.Activity) + '</svg>';
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- time (all trip times are Seoul wall clock) ---------- */
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function toMs(date, hm) {
+  const [y, m, d] = String(date).split('-').map(Number);
+  const [h, mi] = String(hm || '00:00').split(':').map(Number);
+  return Date.UTC(y, m - 1, d, h || 0, mi || 0) - CONFIG.tzOffsetMin * 60000;
+}
+function localParts(ms) {
+  const d = new Date(ms + CONFIG.tzOffsetMin * 60000);
+  const p = (n) => String(n).padStart(2, '0');
+  return { date: d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()), hm: p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) };
+}
+function dayLabel(date, long) {
+  const [y, m, d] = date.split('-').map(Number);
+  const w = DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return long ? w + ' ' + d + ' ' + MON[m - 1] : { w, d };
+}
+function splitDT(s) { const [d, t] = String(s || '').split(' '); return [d || '', t || '']; }
+function dur(min) {
+  min = Math.round(min);
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h >= 48) return Math.round(h / 24) + ' days';
+  return h + ' h' + (m ? ' ' + m + ' min' : '');
+}
+function km(a, b) {
+  if (!a || !b || a.lat == null || b.lat == null) return null;
+  const R = 6371, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+/* ---------- state ---------- */
+const S = {
+  data: null, events: [], days: [], mode: 'live', tab: store.get('tab', 'today'), day: null, open: null,
+  simNow: null, weather: {}
+};
+const now = () => S.simNow != null ? S.simNow : Date.now();
+
+/* ---------- data -> events ---------- */
+function build(data) {
+  const ev = [];
+  const num = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
+  (data.itinerary || []).forEach((r, i) => {
+    if (!r.date || !r.title) return;
+    ev.push({ key: 'i' + i, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
+      label: r.timeLabel || '', who: r.who || 'All', area: r.area || '', address: r.address || '', lat: num(r.lat), lng: num(r.lng),
+      nav: r.naverLink || '', driveMin: num(r.driveMin), photo: r.photoUrl || r.photoLink || '', hours: r.hoursPrice || '',
+      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '' });
+  });
+  (data.bookings || []).forEach((b) => {
+    const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
+    const base = { bookingId: b.id, who: 'All', status: 'Booked', address: b.address || '', lat: num(b.lat), lng: num(b.lng),
+      nav: b.naverLink || '', photo: b.photoUrl || b.photoLink || '', phone: b.phone || '', notes: b.remarks || '' };
+    const add = (o) => ev.push(Object.assign({}, base, o));
+    if (b.category === 'Flight') {
+      add({ key: b.id, type: 'Flight', title: b.title, date: sd, start: st, end: ed === sd ? et : '',
+        label: (b.fromDepTerminal || '') + (b.toArrTerminal ? ' → ' + b.toArrTerminal : ''), sub: 'Lands ' + et });
+    } else if (b.category === 'Hotel') {
+      add({ key: b.id + 'a', type: 'Hotel', title: 'Check in · ' + b.title, date: sd, start: st, end: '', label: 'Check-in from' });
+      add({ key: b.id + 'b', type: 'Hotel', title: 'Check out · ' + b.title, date: ed, start: et, end: '', label: 'Check-out by' });
+    } else if (b.category === 'Car') {
+      add({ key: b.id + 'a', type: 'Car', title: 'Pick up car', sub: b.title, date: sd, start: st, end: '', label: b.fromDepTerminal || '' });
+      add({ key: b.id + 'b', type: 'Car', title: 'Return car', sub: b.title, date: ed, start: et, end: '', label: b.toArrTerminal || '' });
+    } else if (sd) {
+      add({ key: b.id, type: 'Activity', title: b.title, date: sd, start: st, end: ed === sd ? et : '' });
+    }
+  });
+  ev.forEach((e) => { e.t0 = toMs(e.date, e.start || '00:00'); e.t1 = e.end ? toMs(e.date, e.end) : e.t0 + 30 * 60000; });
+  ev.sort((a, b) => a.t0 - b.t0 || (a.status === 'Alternative') - (b.status === 'Alternative'));
+  S.events = ev;
+  S.bookings = Object.fromEntries((data.bookings || []).map((b) => [b.id, b]));
+  // trip days
+  const t = data.trip || {}, start = t.start || (ev[0] && ev[0].date), end = t.end || (ev.length && ev[ev.length - 1].date);
+  const days = [];
+  if (start && end) for (let ms = toMs(start, '12:00'); ms <= toMs(end, '12:00'); ms += 864e5) days.push(localParts(ms).date);
+  S.days = days;
+}
+const live = (e) => e.status !== 'Alternative';
+function nowNext() {
+  const n = now();
+  const cur = S.events.filter((e) => live(e) && e.t0 <= n && n < e.t1).pop() || null;
+  const next = S.events.find((e) => live(e) && e.t0 > n) || null;
+  let prev = null;
+  if (next) for (const e of S.events) { if (e.t0 >= next.t0) break; if (live(e) && e.lat != null) prev = e; }
+  return { cur, next, prev };
+}
+
+/* ---------- weather (Open-Meteo, free; only within ~16 days) ---------- */
+const WMO = (c) => c == null ? '' : c === 0 ? 'Clear' : c <= 2 ? 'Partly cloudy' : c === 3 ? 'Cloudy' : c <= 48 ? 'Fog' : c <= 57 ? 'Drizzle' : c <= 67 ? 'Rain' : c <= 77 ? 'Snow' : c <= 82 ? 'Showers' : c <= 86 ? 'Snow showers' : 'Thunderstorm';
+async function loadWeather() {
+  if (S.mode === 'preview') return;
+  const today = localParts(Date.now()).date;
+  const want = S.days.filter((d) => d >= today && (toMs(d, '00:00') - Date.now()) < 15 * 864e5);
+  for (const d of want) {
+    if (S.weather[d]) continue;
+    const e = S.events.find((x) => x.date === d && x.lat != null) || S.events.filter((x) => x.date < d && x.lat != null).pop();
+    if (!e) continue;
+    try {
+      const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + e.lat.toFixed(3) + '&longitude=' + e.lng.toFixed(3) +
+        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FSeoul&start_date=' + d + '&end_date=' + d;
+      const j = await (await fetch(u)).json();
+      if (j.daily) S.weather[d] = { code: j.daily.weather_code[0], hi: j.daily.temperature_2m_max[0], lo: j.daily.temperature_2m_min[0], rain: j.daily.precipitation_probability_max[0], wind: j.daily.wind_speed_10m_max[0] };
+    } catch (err) { /* offline or blocked: no weather */ }
+  }
+  store.set('weather', S.weather);
+  render();
+}
+function weatherText(d) {
+  const w = S.weather[d];
+  if (!w) return '';
+  return WMO(w.code) + ' · ' + Math.round(w.lo) + '–' + Math.round(w.hi) + '°C · wind ' + Math.round(w.wind) + ' km/h' + (w.rain != null ? ' · rain ' + w.rain + '%' : '');
+}
+
+/* ---------- rendering ---------- */
+function header() {
+  const t = (S.data && S.data.trip) || {};
+  const d = S.day;
+  const tripDay = S.days.indexOf(d) + 1;
+  const wt = weatherText(d);
+  let h = '<header class="top"><div class="top-row"><h1>' + esc(t.tripName || 'Trip') + '</h1>' +
+    '<button class="icon-btn" id="big" aria-pressed="' + document.documentElement.classList.contains('big') + '" title="Larger text">Aa</button>' +
+    '<button class="icon-btn" id="refresh" title="Get latest from the sheet">' + icon('refresh') + '</button></div>' +
+    '<div class="sub num">' + (S.tab === 'today' && d ? '<span><b>Day ' + tripDay + '</b> · ' + dayLabel(d, true) + '</span>' + (wt ? '<span>' + esc(wt) + '</span>' : '') : '<span>' + esc(t.travellers || '') + '</span>') + '</div></header>';
+  if (S.mode === 'preview') {
+    const opts = [['', 'Real time'], ['2026-12-03 06:30', 'Thu 3 Dec 06:30 (on the plane)'], ['2026-12-03 13:20', 'Thu 3 Dec 13:20'], ['2026-12-04 09:00', 'Fri 4 Dec 09:00'], ['2026-12-04 14:40', 'Fri 4 Dec 14:40'], ['2026-12-05 07:30', 'Sat 5 Dec 07:30'], ['2026-12-11 20:00', 'Fri 11 Dec 20:00']];
+    const sel = S.simKey || '';
+    h += '<div class="preview"><b>Preview</b><span>Sheet data from ' + esc(new Date(S.data.generatedAt).toLocaleDateString('en-SG', { day: 'numeric', month: 'short' })) + '.</span>' +
+      '<label>Pretend it is <select id="sim">' + opts.map((o) => '<option value="' + o[0] + '"' + (o[0] === sel ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></label></div>';
+  }
+  if (S.tab === 'today') {
+    const todayD = localParts(now()).date;
+    h += '<nav class="days" aria-label="Trip days">' + S.days.map((x) => {
+      const l = dayLabel(x);
+      return '<button class="day' + (x === todayD ? ' today' : '') + '" data-day="' + x + '" aria-pressed="' + (x === d) + '"><small>' + l.w + '</small><b class="num">' + l.d + '</b></button>';
+    }).join('') + '</nav>';
+  }
+  return h;
+}
+
+function photoBlock(e, cls) {
+  if (e.photo) return '<div class="' + cls + '"><img src="' + esc(e.photo) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer"></div>';
+  return '<div class="' + cls + '"><div class="ph">' + icon(e.type) + '<span>' + esc(e.area || e.address || e.type) + '</span></div></div>';
+}
+function navBtn(e, big) {
+  if (!e.nav) return '';
+  return '<a class="btn ' + (big ? 'go' : 'small') + '" href="' + esc(e.nav) + '" target="_blank" rel="noopener">' + icon('nav') + 'Navigate' + (big ? ' in Naver' : '') + '</a>';
+}
+function callBtn(phone) {
+  if (!phone) return '';
+  return '<a class="btn small" href="tel:' + esc(String(phone).replace(/\s/g, '')) + '">' + icon('phone') + esc(phone) + '</a>';
+}
+
+function nextCard() {
+  const n = now(), { cur, next, prev } = nowNext();
+  const first = S.events[0];
+  if (!next && !cur) return '<section class="next"><div class="body"><div class="eyebrow">Trip finished</div><h2>Welcome home</h2></div></section>';
+  const e = next || cur;
+  const mins = (e.t0 - n) / 60000;
+  let when;
+  if (next && first && n < first.t0 - 864e5) when = 'Trip starts in ' + dur((first.t0 - n) / 60000);
+  else when = next ? (mins < 1 ? 'Starting now' : 'In ' + dur(mins)) : 'Now';
+  const dist = km(cur && cur.lat != null ? cur : prev, e);
+  const drive = e.driveMin || (dist != null ? Math.max(5, Math.round(dist * 1.35 / 45 * 60)) : null);
+  const facts = [];
+  facts.push('<span><b class="num">' + esc(e.start) + '</b>' + (e.end ? '–' + esc(e.end) : '') + ' · ' + dayLabel(e.date, true) + '</span>');
+  if (drive) facts.push('<span>~<b class="num">' + drive + ' min</b> drive' + (e.driveMin ? '' : ' (est.)') + '</span>');
+  if (dist != null && dist > 0.3) facts.push('<span><b class="num">' + (dist < 10 ? dist.toFixed(1) : Math.round(dist)) + ' km</b> away</span>');
+  if (e.who && e.who !== 'All') facts.push('<span>For <b>' + esc(e.who) + '</b></span>');
+  const alsoNow = S.events.filter((x) => live(x) && x !== e && x.t0 === e.t0);
+  let h = '<section class="next" aria-label="Next stop">' + photoBlock(e, 'photo') + '<div class="body">' +
+    '<div class="eyebrow num"><span>' + (next ? 'Next' : 'Now') + '</span><span>' + esc(when) + '</span></div>' +
+    '<h2>' + esc(e.title) + '</h2><div class="facts">' + facts.join('') + '</div>' +
+    (alsoNow.length ? '<div class="facts">Same time: ' + alsoNow.map((x) => '<b>' + esc(x.title) + '</b> (' + esc(x.who) + ')').join(', ') + '</div>' : '') +
+    (e.notes ? warnOrText(e.notes) : '') +
+    '<div class="actions">' + navBtn(e, true) + callBtn(e.phone) + '</div></div>';
+  if (cur && next) h += '<div class="now-line"><span class="dot"></span><span>Now: <b>' + esc(cur.title) + '</b>' + (cur.end ? ' until ' + esc(cur.end) : '') + '</span></div>';
+  return h + '</section>';
+}
+function warnOrText(t) {
+  const parts = String(t).split(' · ');
+  const w = parts.filter((p) => p.includes('⚠'));
+  const rest = parts.filter((p) => !p.includes('⚠'));
+  return w.map((p) => '<div class="warn">' + esc(p) + '</div>').join('') + (rest.length ? '<div>' + esc(rest.join(' · ')) + '</div>' : '');
+}
+
+function dayList() {
+  const n = now();
+  const list = S.events.filter((e) => e.date === S.day);
+  const { cur } = nowNext();
+  if (!list.length) return '<div class="tl"><div class="empty">Nothing planned yet for ' + dayLabel(S.day, true) + '.<br>Add rows in the Itinerary tab of the sheet.</div></div>';
+  return '<div class="tl">' + list.map((e) => {
+    const past = e.t1 <= n && e !== cur, isCur = cur === e, isOpen = S.open === e.key;
+    const lab = e.label && !/^\d{1,2}:\d{2}/.test(e.label) && e.label !== e.start ? e.label : '';
+    const chips = (e.status === 'Optional' ? '<span class="chip opt">Optional</span>' : e.status === 'Alternative' ? '<span class="chip opt">Backup</span>' : '') +
+      (e.who && e.who !== 'All' ? '<span class="chip who">' + esc(e.who) + '</span>' : '');
+    let h = '<button class="row' + (past ? ' past' : '') + (isCur ? ' current' : '') + (e.status === 'Alternative' ? ' alt' : '') + '" data-open="' + e.key + '" aria-expanded="' + isOpen + '">' +
+      '<span class="t">' + esc(e.start || '–') + (lab ? '<small>' + esc(lab) + '</small>' : '') + '</span>' +
+      '<span class="ic">' + icon(e.type) + '</span>' +
+      '<span class="ti"><b>' + esc(e.title) + '</b><span>' + esc(e.sub || e.area || '') + (e.driveMin ? ' · ' + e.driveMin + ' min drive' : '') + '</span></span>' +
+      '<span>' + chips + '</span></button>';
+    if (isOpen) h += detail(e);
+    return h;
+  }).join('') + '</div>';
+}
+function detail(e) {
+  const b = e.bookingId && S.bookings[e.bookingId];
+  const kv = [];
+  if (e.hours) kv.push(['Hours', esc(e.hours)]);
+  if (e.address) kv.push(['Address', esc(e.address)]);
+  if (b) kv.push(['Booking', '<span class="mono">' + esc(b.refNo) + '</span>']);
+  if (b && b.amount) kv.push(['Payment', esc(b.paid) + ' · ' + esc(b.amount)]);
+  return '<div class="detail">' + (e.photo ? '<img src="' + esc(e.photo) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '') +
+    (kv.length ? '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' : '') +
+    (e.notes ? warnOrText(e.notes) : '') +
+    '<div class="actions">' + navBtn(e) + callBtn(e.phone) + (b && b.bookingPdfLink ? '<a class="btn small" href="' + esc(b.bookingPdfLink) + '" target="_blank" rel="noopener">' + icon('doc') + 'Booking PDF</a>' : '') + '</div></div>';
+}
+
+function todayView() {
+  return '<main>' + nextCard() + '<h2 class="section-h"><span>' + dayLabel(S.day, true) + '</span><span>' + S.events.filter((e) => e.date === S.day && live(e)).length + ' stops</span></h2>' + dayList() + '</main>';
+}
+
+function bookingsView() {
+  const groups = [['Flight', 'Flights'], ['Hotel', 'Stays'], ['Car', 'Car'], ['Activity', 'Activities']];
+  const all = (S.data.bookings || []);
+  return '<main>' + groups.map(([cat, name]) => {
+    const items = all.filter((b) => (b.category || 'Activity') === cat);
+    if (!items.length) return '';
+    return '<h2 class="section-h"><span>' + name + '</span></h2>' + items.map((b) => {
+      const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
+      const when = sd ? dayLabel(sd, true) + ' ' + st + (ed ? ' → ' + (ed !== sd ? dayLabel(ed, true) + ' ' : '') + et : '') : '';
+      const due = /^no/i.test(String(b.paid || ''));
+      return '<article class="bk"><h3>' + esc(b.title) + '</h3><div class="when num">' + esc(when) +
+        (b.fromDepTerminal || b.toArrTerminal ? ' · ' + esc(b.fromDepTerminal) + (b.toArrTerminal ? ' → ' + esc(b.toArrTerminal) : '') : '') + '</div>' +
+        '<div class="ref"><span class="mono">' + esc(b.refNo) + '</span><button class="btn small" data-copy="' + esc(b.refNo) + '">' + icon('copy') + 'Copy</button></div>' +
+        (b.paid || b.amount ? '<div class="pay' + (due ? ' due' : '') + '">' + esc(b.paid) + (b.amount ? ' · ' + esc(b.amount) : '') + '</div>' : '') +
+        (b.remarks ? warnOrText(b.remarks) : '') +
+        '<div class="actions">' + navBtn({ nav: b.naverLink }) + callBtn(b.phone) + (b.bookingPdfLink ? '<a class="btn small" href="' + esc(b.bookingPdfLink) + '" target="_blank" rel="noopener">' + icon('doc') + 'Booking PDF</a>' : '') + '</div></article>';
+    }).join('');
+  }).join('') + '</main>';
+}
+
+function listsView() {
+  const ticks = store.get('ticks', {});
+  const lists = S.data.lists || [];
+  const names = [...new Set(lists.map((l) => l.list))];
+  return '<main>' + names.map((name) => {
+    const shared = /shared/i.test(name);
+    const items = lists.filter((l) => l.list === name);
+    const done = items.filter((l, i) => ticks[name + '|' + l.item]).length;
+    return '<h2 class="section-h"><span>' + esc(name) + (shared ? ' · for everyone' : ' · ticks saved on this phone') + '</span>' + (shared ? '' : '<span class="num">' + done + '/' + items.length + '</span>') + '</h2>' +
+      '<div class="list">' + items.map((l, i) => {
+        const id = 'c-' + name.replace(/\W/g, '') + '-' + i, k = name + '|' + l.item, on = !!ticks[k];
+        const meta = [l.who && l.who !== 'All' ? l.who : '', l.note].filter(Boolean).join(' · ');
+        return shared
+          ? '<div class="li"><span class="dot" style="margin-top:7px"></span><div class="txt">' + esc(l.item) + (meta ? '<small>' + esc(meta) + '</small>' : '') + '</div></div>'
+          : '<div class="li' + (on ? ' done' : '') + '"><input type="checkbox" id="' + id + '" data-tick="' + esc(k) + '"' + (on ? ' checked' : '') + '><label for="' + id + '">' + esc(l.item) + (meta ? '<small>' + esc(meta) + '</small>' : '') + '</label></div>';
+      }).join('') + '</div>';
+  }).join('') + '</main>';
+}
+
+function infoView() {
+  const info = S.data.info || [];
+  return '<main><h2 class="section-h"><span>Emergency &amp; contacts</span></h2><div class="list">' + info.map((r) => {
+    const ph = r.phone ? String(r.phone) : '';
+    return '<div class="li"><div class="txt"><b>' + esc(r.label) + '</b><small>' + esc(r.value) + '</small>' +
+      (ph ? '<a class="phone" href="tel:' + esc(ph.replace(/\s/g, '')) + '">' + esc(ph) + '</a>' : '') + '</div>' +
+      (ph ? '<button class="btn small" data-copy="' + esc(ph) + '" aria-label="Copy ' + esc(r.label) + ' number">' + icon('copy') + '</button>' : '') +
+      (r.link ? '<a class="btn small" href="' + esc(r.link) + '" target="_blank" rel="noopener" aria-label="Map">' + icon('nav') + '</a>' : '') + '</div>';
+  }).join('') + '</div></main>';
+}
+
+function tabs() {
+  const T = [['today', 'Today', 'today'], ['bookings', 'Bookings', 'book'], ['lists', 'Lists', 'list'], ['info', 'Info', 'info']];
+  return '<nav class="tabs" role="tablist">' + T.map(([id, name, ic]) => '<button class="tab" role="tab" data-tab="' + id + '" aria-selected="' + (S.tab === id) + '">' + icon(ic) + name + '</button>').join('') + '</nav>';
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!S.data) return;
+  const views = { today: todayView, bookings: bookingsView, lists: listsView, info: infoView };
+  app.innerHTML = header() + (views[S.tab] || todayView)() + tabs();
+  const active = app.querySelector('.day[aria-pressed="true"]');
+  if (active) active.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+
+function pickDefaultDay() {
+  const d = localParts(now()).date;
+  S.day = S.days.includes(d) ? d : (d < S.days[0] ? S.days[0] : S.days[S.days.length - 1]);
+}
+
+/* ---------- events ---------- */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 1800);
+}
+document.addEventListener('click', async (ev) => {
+  const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],#big,#refresh');
+  if (!el) return;
+  if (el.dataset.tab) { S.tab = el.dataset.tab; store.set('tab', S.tab); render(); window.scrollTo(0, 0); }
+  else if (el.dataset.day) { S.day = el.dataset.day; S.open = null; render(); }
+  else if (el.dataset.open) { S.open = S.open === el.dataset.open ? null : el.dataset.open; render(); }
+  else if (el.dataset.copy != null) {
+    try { await navigator.clipboard.writeText(el.dataset.copy); toast('Copied ' + el.dataset.copy); }
+    catch (e) { toast(el.dataset.copy); }
+  } else if (el.id === 'big') {
+    const on = document.documentElement.classList.toggle('big'); store.set('big', on); render();
+  } else if (el.id === 'refresh') { await refresh(true); }
+});
+document.addEventListener('change', (ev) => {
+  const t = ev.target;
+  if (t.dataset && t.dataset.tick) { const ticks = store.get('ticks', {}); ticks[t.dataset.tick] = t.checked; store.set('ticks', ticks); render(); }
+  if (t.id === 'sim') { S.simKey = t.value; S.simNow = t.value ? toMs(...t.value.split(' ')) : null; S.open = null; pickDefaultDay(); render(); }
+});
+
+/* ---------- loading ---------- */
+async function fetchLive(code, fresh) {
+  const u = CONFIG.api + '?trip=' + encodeURIComponent(CONFIG.trip) + '&code=' + encodeURIComponent(code) + (fresh ? '&fresh=1' : '');
+  const r = await fetch(u, { redirect: 'follow' });
+  return r.json();
+}
+function accept(data) {
+  S.data = data; build(data); if (!S.day || !S.days.includes(S.day)) pickDefaultDay(); render();
+}
+async function refresh(manual) {
+  if (S.mode === 'preview') { if (manual) toast('Preview uses a saved copy of the sheet'); return; }
+  const code = store.get('code', '');
+  if (!code) return gate();
+  try {
+    const j = await fetchLive(code, manual);
+    if (j.ok) { store.set('data', j); accept(j); if (manual) toast('Up to date'); loadWeather(); }
+    else if (j.error === 'bad_passcode') { store.set('code', ''); gate('That passcode has changed. Ask JJ for the new one.'); }
+    else if (manual) toast('The sheet could not be read just now');
+  } catch (e) { if (manual) toast('No signal. Showing the saved copy.'); }
+}
+function gate(msg) {
+  document.getElementById('app').innerHTML = '<form class="gate" id="gate"><h1>JX JJ Fam Jeju</h1><p>Enter the family passcode.</p>' +
+    '<input id="code" inputmode="numeric" autocomplete="off" aria-label="Passcode" required><button class="btn go" type="submit">Open the trip</button><div class="err" id="err">' + esc(msg || '') + '</div></form>';
+  document.getElementById('gate').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const code = document.getElementById('code').value.trim(), err = document.getElementById('err');
+    err.textContent = 'Checking…';
+    try {
+      const j = await fetchLive(code, false);
+      if (j.ok) { store.set('code', code); store.set('data', j); accept(j); loadWeather(); }
+      else err.textContent = j.error === 'bad_passcode' ? 'Wrong passcode. Try again.' : 'Could not open the trip.';
+    } catch (e) { err.textContent = 'No connection. Connect to the internet once to open the trip.'; }
+  });
+}
+async function boot() {
+  if (store.get('big', false)) document.documentElement.classList.add('big');
+  S.weather = store.get('weather', {});
+  // Preview build ships a snapshot.json next to the page; the real site does not.
+  try {
+    const r = await fetch('snapshot.json', { cache: 'no-store' });
+    if (r.ok) { S.mode = 'preview'; accept(await r.json()); return; }
+  } catch (e) {}
+  const cached = store.get('data', null);
+  if (cached) accept(cached);
+  if (store.get('code', '')) refresh(false); else if (!cached) gate();
+  setInterval(() => { if (S.tab === 'today' && S.simNow == null) render(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(false); });
+}
+boot();
+if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {} }
+</script>
+</body>
+</html>
