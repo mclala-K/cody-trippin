@@ -161,6 +161,8 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .hero p { margin: 6px 0 0; color: var(--muted); }
 .trip { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
 .trip h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.45em; line-height: 1.05; letter-spacing: -.01em; }
+.trip h2 { display: flex; align-items: center; gap: 8px; }
+.trip-icon { font-size: 1.1em; line-height: 1; flex: 0 0 auto; }
 .trip .dates { font-weight: 700; }
 .trip .who { color: var(--muted); font-size: .85em; grid-column: 1 / -1; }
 .trip .status { grid-row: 1 / span 2; grid-column: 2; text-align: right; font-size: .8em; font-weight: 700; color: var(--sea); }
@@ -280,7 +282,7 @@ async function api(params) {
 }
 function summaryFrom(id, data) {
   const t = data.trip || {};
-  return { id, tripName: t.tripName || id, destination: t.destination || '', start: t.start || '', end: t.end || '', travellers: t.travellers || '' };
+  return { id, tripName: t.tripName || id, destination: t.destination || '', start: t.start || '', end: t.end || '', travellers: t.travellers || '', icon: t.icon || '' };
 }
 /** Unlock with a code: returns list of trip summaries (new backend), or probes known trips (old backend). */
 async function unlock(code) {
@@ -316,11 +318,12 @@ function build(data) {
     if (b.category === 'Flight') {
       add({ key: b.id, type: 'Flight', title: b.title, date: sd, start: st, end: ed === sd ? et : '', sub: (b.fromDepTerminal || '') + (b.toArrTerminal ? ' → ' + b.toArrTerminal : '') + ' · lands ' + et });
     } else if (b.category === 'Hotel') {
-      add({ key: b.id + 'a', type: 'Hotel', title: 'Check in · ' + b.title, date: sd, start: st, end: '', label: 'from' });
-      add({ key: b.id + 'b', type: 'Hotel', title: 'Check out · ' + b.title, date: ed, start: et, end: '', label: 'by' });
+      add({ key: b.id + 'a', type: 'Hotel', title: 'Check in · ' + b.title, place: b.title, date: sd, start: st, end: '', label: 'from' });
+      add({ key: b.id + 'b', type: 'Hotel', title: 'Check out · ' + b.title, place: b.title, date: ed, start: et, end: '', label: 'by' });
     } else if (b.category === 'Car') {
-      add({ key: b.id + 'a', type: 'Car', title: 'Pick up car', sub: b.title + (b.fromDepTerminal ? ' · ' + b.fromDepTerminal : ''), date: sd, start: st, end: '' });
-      add({ key: b.id + 'b', type: 'Car', title: 'Return car', sub: b.title + (b.toArrTerminal ? ' · ' + b.toArrTerminal : ''), date: ed, start: et, end: '' });
+      const carPlace = b.title.split(' · ')[0] + (b.fromDepTerminal ? ' ' + b.fromDepTerminal : '');
+      add({ key: b.id + 'a', type: 'Car', title: 'Pick up car', place: carPlace, sub: b.title + (b.fromDepTerminal ? ' · ' + b.fromDepTerminal : ''), date: sd, start: st, end: '' });
+      add({ key: b.id + 'b', type: 'Car', title: 'Return car', place: b.title.split(' · ')[0] + (b.toArrTerminal ? ' ' + b.toArrTerminal : ''), sub: b.title + (b.toArrTerminal ? ' · ' + b.toArrTerminal : ''), date: ed, start: et, end: '' });
     } else if (sd) {
       add({ key: b.id, type: 'Activity', title: b.title, date: sd, start: st, end: ed === sd ? et : '' });
     }
@@ -353,11 +356,11 @@ function nowNext() {
   return { cur, next };
 }
 
-/* ---------- Naver Map: open the app straight into driving directions ---------- */
+/* ---------- Naver Map: open the app on a pin at the place (no directions) ---------- */
 function naverHref(e) {
   const app = encodeURIComponent(CONFIG.naverAppName);
-  const name = encodeURIComponent(String(e.title || '').replace(/^(Check (in|out)|Pick up car|Return car) · /, ''));
-  if (e.lat != null && e.lng != null) return 'nmap://route/car?dlat=' + e.lat + '&dlng=' + e.lng + '&dname=' + name + '&appname=' + app;
+  const name = encodeURIComponent(e.place || e.title || '');
+  if (e.lat != null && e.lng != null) return 'nmap://place?lat=' + e.lat + '&lng=' + e.lng + '&name=' + name + '&appname=' + app;
   if (e.nav) { const q = decodeURIComponent(e.nav.split('/search/')[1] || e.title); return 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + app; }
   return '';
 }
@@ -410,9 +413,10 @@ function homeView(msg) {
     if (t.start && todayD < t.start) { const d = Math.ceil((toMs(t.start, '00:00') - n) / 864e5); status = '<b class="num">' + d + '</b>' + (d === 1 ? 'day to go' : 'days to go'); }
     else if (t.end && todayD <= t.end) status = '<b>Now</b>on the trip';
     else status = 'Done';
-    return '<a class="trip' + (t.end && t.end < todayD ? ' past' : '') + '" href="#' + esc(t.id) + '"><h2>' + esc(t.destination || t.tripName) + '</h2>' +
+    return '<a class="trip' + (t.end && t.end < todayD ? ' past' : '') + '" href="#' + esc(t.id) + '"><h2>' +
+      (t.icon ? '<span class="trip-icon" aria-hidden="true">' + esc(t.icon) + '</span>' : '') + esc(t.destination || t.tripName) + '</h2>' +
       '<span class="status">' + status + '</span><span class="dates num">' + esc(rangeLabel(t.start, t.end)) + '</span>' +
-      '<span class="who">' + esc(t.tripName) + (t.travellers ? ' · ' + esc(t.travellers) : '') + '</span></a>';
+      (t.travellers ? '<span class="who">' + esc(t.travellers) + '</span>' : '') + '</a>';
   };
   document.getElementById('app').innerHTML =
     '<header class="hero"><h1 class="brand">Cody <span>Trippin</span></h1><p>Your trips with Cody</p></header><main>' +
@@ -578,7 +582,7 @@ function infoView() {
       (ph ? '<a class="phone" href="tel:' + esc(ph.replace(/\s/g, '')) + '">' + esc(ph) + '</a>' : '') + '</div>' +
       (ph ? '<button class="btn small icon" data-copy="' + esc(ph) + '" aria-label="Copy ' + esc(r.label) + ' number">' + icon('copy') + '</button>' : '') + '</div>';
   }).join('') + '</div>' +
-  '<h2 class="section-h"><span>Naver Map in English</span></h2><div class="list"><div class="li"><div class="txt">Open the Naver Map app → tap your profile (top left) → <b>Settings</b> → <b>Language</b> → <b>English</b>. Do this once per phone.<small>The Navigate buttons open Naver Map straight into driving directions.</small></div></div></div></main>';
+  '<h2 class="section-h"><span>Naver Map in English</span></h2><div class="list"><div class="li"><div class="txt">Open the Naver Map app → tap your profile (top left) → <b>Settings</b> → <b>Language</b> → <b>English</b>. Do this once per phone.<small>The Navigate buttons open Naver Map with a pin on the place.</small></div></div></div></main>';
 }
 
 function tabs() {
