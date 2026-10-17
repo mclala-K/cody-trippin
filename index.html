@@ -356,18 +356,28 @@ function nowNext() {
   return { cur, next };
 }
 
-/* ---------- Naver Map: open the app on a pin at the place (no directions) ---------- */
+/* ---------- Naver Map: open the app searching the place's Korean name ----------
+   Naver's own search lands on the real listing (reviews, photos) when the name is
+   unique, or lists the matches so you can tap the right one. The Korean name comes
+   from the sheet's "Naver link" (map.naver.com/p/search/<name>), else the title. */
+function naverQuery(e) {
+  const m = (e.nav || '').split('/search/')[1];
+  if (m) { const raw = m.split(/[?#]/)[0]; try { return decodeURIComponent(raw).trim(); } catch (_) { return raw.trim(); } }
+  return String(e.place || e.title || '').trim();
+}
 function naverHref(e) {
-  const app = encodeURIComponent(CONFIG.naverAppName);
-  const name = encodeURIComponent(e.place || e.title || '');
-  if (e.lat != null && e.lng != null) return 'nmap://place?lat=' + e.lat + '&lng=' + e.lng + '&name=' + name + '&appname=' + app;
-  if (e.nav) { const q = decodeURIComponent(e.nav.split('/search/')[1] || e.title); return 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + app; }
-  return '';
+  const q = naverQuery(e);
+  if (!q) return '';
+  return 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + encodeURIComponent(CONFIG.naverAppName);
+}
+function naverWeb(e) {
+  const q = naverQuery(e);
+  return q ? 'https://map.naver.com/p/search/' + encodeURIComponent(q) : '';
 }
 function navBtn(e, label) {
   const href = naverHref(e);
   if (!href) return '';
-  return '<a class="btn go small" href="' + esc(href) + '" data-web="' + esc(e.nav || '') + '">' + icon('nav') + (label || 'Navigate') + '</a>';
+  return '<a class="btn go small" href="' + esc(href) + '" data-web="' + esc(naverWeb(e)) + '">' + icon('nav') + (label || 'Navigate') + '</a>';
 }
 function callBtn(phone, iconOnly) {
   if (!phone) return '';
@@ -582,7 +592,7 @@ function infoView() {
       (ph ? '<a class="phone" href="tel:' + esc(ph.replace(/\s/g, '')) + '">' + esc(ph) + '</a>' : '') + '</div>' +
       (ph ? '<button class="btn small icon" data-copy="' + esc(ph) + '" aria-label="Copy ' + esc(r.label) + ' number">' + icon('copy') + '</button>' : '') + '</div>';
   }).join('') + '</div>' +
-  '<h2 class="section-h"><span>Naver Map in English</span></h2><div class="list"><div class="li"><div class="txt">Open the Naver Map app → tap your profile (top left) → <b>Settings</b> → <b>Language</b> → <b>English</b>. Do this once per phone.<small>The Navigate buttons open Naver Map with a pin on the place.</small></div></div></div></main>';
+  '<h2 class="section-h"><span>Naver Map in English</span></h2><div class="list"><div class="li"><div class="txt">Open the Naver Map app → tap your profile (top left) → <b>Settings</b> → <b>Language</b> → <b>English</b>. Do this once per phone.<small>The Navigate buttons open Naver Map searching for the place. If it shows a list, tap the one with the reviews and photos.</small></div></div></div></main>';
 }
 
 function tabs() {
