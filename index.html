@@ -185,6 +185,7 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .gate h1 { margin: 0; font-size: 2.2rem; }
 .gate input { font-size: 1.6rem; text-align: center; letter-spacing: .3em; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 99px; font-size: .9em; z-index: 9; max-width: calc(100% - 32px); }
+.toast a { color: inherit; font-weight: 700; text-decoration: underline; display: block; padding: 4px 2px; }
 @media (prefers-reduced-motion: no-preference) { .item.open .detail { animation: open .16s ease-out; } @keyframes open { from { opacity: .3; } } }
 </style>
 </head>
@@ -624,6 +625,12 @@ function toast(msg) {
   t.textContent = msg; t.hidden = false;
   clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 1800);
 }
+function toastLink(msg, href) {
+  const t = document.getElementById('toast');
+  t.innerHTML = '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(msg) + ' ↗</a>';
+  t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 8000);
+}
 function toggleItem(key) {
   const el = document.querySelector('.item[data-key="' + key + '"]');
   const e = S.events.find((x) => x.key === key);
@@ -634,10 +641,12 @@ function toggleItem(key) {
 }
 document.addEventListener('click', async (ev) => {
   const nav = ev.target.closest('a[href^="nmap://"]');
-  if (nav) { // if Naver Map isn't installed, fall back to the website
+  if (nav) { // hand off to the Naver Map app; this page never navigates away
     const web = nav.dataset.web;
-    const t = setTimeout(() => { if (!document.hidden && web) location.href = web; }, 1600);
-    document.addEventListener('visibilitychange', () => clearTimeout(t), { once: true });
+    if (web) { // still here after a moment (pop-up cancelled, or no app)? offer the website in a new tab
+      const t = setTimeout(() => { if (!document.hidden) toastLink('Didn’t open? Open Naver website', web); }, 2500);
+      document.addEventListener('visibilitychange', () => clearTimeout(t), { once: true });
+    }
     return;
   }
   const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],#big,#refresh');
