@@ -510,7 +510,7 @@ function itemHTML(e, cur, next, n) {
   const lab = e.label && !/^\d{1,2}:\d{2}/.test(e.label) && e.label !== e.start ? e.label : '';
   const chips = (isNow ? '<span class="chip now">Now</span>' : '') +
     (isNext && !isNow ? '<span class="chip next">Next · ' + esc(dur((e.t0 - n) / 60000)) + '</span>' : '') +
-    (e.status === 'Optional' ? '<span class="chip opt">Optional</span>' : e.status === 'Alternative' ? '<span class="chip opt">Backup</span>' : '') +
+    (e.status === 'Optional' ? '<span class="chip opt">Optional</span>' : e.status === 'Alternative' ? '<span class="chip opt">Alternative</span>' : '') +
     (e.who && e.who !== 'All' ? '<span class="chip who">' + esc(e.who) + '</span>' : '');
   return '<div class="item' + (past ? ' past' : '') + (isNow ? ' now' : '') + (open ? ' open' : '') + '" data-key="' + e.key + '">' +
     '<button class="row" data-open="' + e.key + '" aria-expanded="' + open + '">' +
