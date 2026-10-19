@@ -89,7 +89,7 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .tl { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .item { border-top: 1px solid var(--line); }
 .item:first-child { border-top: 0; }
-.row { display: grid; grid-template-columns: 54px 30px 1fr auto; gap: 8px; align-items: center; padding: 11px 12px; cursor: pointer; width: 100%; text-align: left; background: none; border: 0; }
+.row { display: grid; grid-template-columns: 4.1em 30px 1fr auto; gap: 8px; align-items: center; padding: 11px 12px; cursor: pointer; width: 100%; text-align: left; background: none; border: 0; }
 .row .t { font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .row .t small { display: block; white-space: nowrap; font-weight: 400; color: var(--muted); font-size: .7em; margin-top: 2px; }
 .row .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--surface-2); display: grid; place-items: center; }
@@ -274,9 +274,35 @@ svg .a-on { opacity: 0; }
   .item.open .ic .m-go { animation: go 1.8s ease-in-out infinite; }
   @keyframes go { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -20; } }
 }
+/* ---------- v9: trip background theme ----------
+   One fixed layer behind everything. A 'belt' of 150px cells drifts diagonally
+   (bottom-left -> top-right) by exactly one cell every 55 s, then loops seamlessly.
+   Low opacity + muted colours + very slow speed keep it calm; Reduce Motion = still pattern. */
+#bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; display: none; opacity: .42; }
+body.has-bg:not(.home) #bg { display: block; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #bg { opacity: .26; } }
+:root[data-theme="dark"] #bg { opacity: .26; }
+.bg-belt { position: absolute; top: 0; will-change: transform; }
+.bgm { position: absolute; overflow: visible; }
+/* header copy of the belt: clipped to the strip from the Day label down; header content sits above it */
+.hdr-bg { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; opacity: .42; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hdr-bg { opacity: .26; } }
+:root[data-theme="dark"] .hdr-bg { opacity: .26; }
+body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .bg-belt { animation: belt 55s linear infinite; }
+  @keyframes belt { to { transform: translate3d(150px, -150px, 0); } }
+  .bgm.rock { transform-origin: 50% 60%; animation: bgrock 6s ease-in-out infinite alternate; }
+  @keyframes bgrock { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+  .bgm.hop { transform-origin: 50% 100%; animation: bghop 6s ease-in-out infinite; }
+  @keyframes bghop { 0%, 62%, 100% { transform: translateY(0) scale(1, 1); } 70% { transform: translateY(0) scale(1.08, .92); } 80% { transform: translateY(-4px) scale(.96, 1.04); } 90% { transform: translateY(0) scale(1.04, .96); } }
+  .bgm.roll { animation: bgroll 16s linear infinite; }
+  @keyframes bgroll { to { transform: rotate(360deg); } }
+}
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true"></div>
 <div id="app"></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -504,6 +530,7 @@ function weatherText(d) {
 /* ---------- HOME: trip list ---------- */
 function homeView(msg) {
   document.body.classList.add('home');
+  setBg(null);
   const trips = Object.values(myTrips()).map((t) => t.summary).filter(Boolean)
     .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
   const n = now(), todayD = localParts(n).date;
@@ -691,13 +718,72 @@ function tabs() {
   return '<nav class="tabs" role="tablist">' + T.map(([id, name, ic]) => '<button class="tab" role="tab" data-tab="' + id + '" aria-selected="' + (S.tab === id) + '">' + icon(ic) + name + '</button>').join('') + '</nav>';
 }
 
+/* ---------- v9: trip background theme (Jeju = tangerines + dol hareubang drifting diagonally) ----------
+   Cells are 150px. Each cell's layout depends only on (row + col), so after the belt moves one
+   cell up-right the picture is identical and the loop is seamless. Add a new theme = add an entry here. */
+const BG_T = 150;
+const BG = {
+  jeju: {
+    defs: '<symbol id="m-tang" viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="9" ry="8" fill="#F39A3B"/><ellipse cx="8.6" cy="10.8" rx="2.2" ry="1.3" fill="#fff" opacity=".45"/><path d="M12 6.6V4.4" stroke="#6B4E2E" stroke-width="1.4" stroke-linecap="round"/><path d="M12.4 5.4c2-2.6 5-2.6 6.6-1.6-1.6 2.6-4.6 3.1-6.6 1.6z" fill="#4FA35B"/><circle cx="9.4" cy="14.6" r=".9" fill="#6B3A1A"/><circle cx="14.6" cy="14.6" r=".9" fill="#6B3A1A"/><path d="M10.8 16.8q1.2 1 2.4 0" stroke="#6B3A1A" stroke-width=".8" fill="none" stroke-linecap="round"/></symbol><symbol id="m-stone" viewBox="0 0 20 28"><path d="M4 10h12v13a4 4 0 01-4 4H8a4 4 0 01-4-4z" fill="#8A8680"/><path d="M3 8.6C3 4 6.2 1.4 10 1.4S17 4 17 8.6z" fill="#8A8680"/><rect x="2" y="7.6" width="16" height="2.4" rx="1.2" fill="#75716B"/><circle cx="6.6" cy="13" r="1.7" fill="#ECE9E3"/><circle cx="13.4" cy="13" r="1.7" fill="#ECE9E3"/><circle cx="6.8" cy="13.2" r=".8" fill="#3B3936"/><circle cx="13.2" cy="13.2" r=".8" fill="#3B3936"/><ellipse cx="10" cy="16.2" rx="1.4" ry="2" fill="#75716B"/><path d="M8.4 19.6h3.2" stroke="#3B3936" stroke-width=".9" stroke-linecap="round"/><path d="M5 23.2c2-1 4-1 5 .2M15 22.4c-1.5-1-3.2-1-4.2.4" stroke="#66625C" stroke-width="1.2" fill="none" stroke-linecap="round"/><circle cx="12.5" cy="5" r=".5" fill="#6E6A64"/><circle cx="7" cy="4.6" r=".45" fill="#6E6A64"/><circle cx="14" cy="25" r=".5" fill="#6E6A64"/></symbol>',
+    // [symbol, x, y, width, motion] per layout; a stone is 1.4x taller than wide
+    layouts: [
+      [['m-tang', 20, 22, 22, 'rock'], ['m-stone', 94, 62, 18, 'hop'], ['m-tang', 44, 112, 14, 'roll']],
+      [['m-stone', 28, 20, 17, 'hop'], ['m-tang', 104, 34, 19, 'rock'], ['m-tang', 78, 112, 13, 'roll']],
+      [['m-tang', 70, 14, 15, 'roll'], ['m-tang', 16, 86, 21, 'rock'], ['m-stone', 112, 96, 18, 'hop']]
+    ]
+  }
+};
+function themeFor(d) {
+  const t = (d && d.trip) || {}, k = String(t.theme || '').toLowerCase().trim();
+  if (BG[k]) return k;
+  return /jeju|제주/i.test((t.destination || '') + ' ' + (t.tripName || '')) ? 'jeju' : null;
+}
+const BG_LOOP = 55, BG_EPOCH = performance.now(); // seconds per cell (matches the CSS belt animation)
+// One belt of cells. Every copy is timed from the same clock, so the main layer and the header copy move in step.
+function bgBelt(key, cols, rows, top) {
+  const th = BG[key], el = (performance.now() - BG_EPOCH) / 1000;
+  let cells = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const d = r + c, lay = th.layouts[d % th.layouts.length];
+    cells += lay.map(([id, x, y, w, m], j) => '<svg class="bgm ' + m + '" style="left:' + (c * BG_T + x) + 'px;top:' + (r * BG_T + y) +
+      'px;width:' + w + 'px;height:' + Math.round(id === 'm-stone' ? w * 1.4 : w) + 'px;animation-delay:-' + (el + (d * 1.3 + j * 2.1) % 6).toFixed(2) + 's">' +
+      '<use href="#' + id + '" width="100%" height="100%"/></svg>').join('');
+  }
+  return '<div class="bg-belt" style="left:-' + BG_T + 'px;top:' + top + 'px;width:' + cols * BG_T + 'px;height:' + rows * BG_T +
+    'px;animation-delay:-' + (el % BG_LOOP).toFixed(2) + 's">' + cells + '</div>';
+}
+function setBg(key) {
+  const el = document.getElementById('bg');
+  if (!el) return;
+  document.body.classList.toggle('has-bg', !!key);
+  if (!key) return;
+  const cols = Math.ceil(innerWidth / BG_T) + 2, rows = Math.ceil(innerHeight / BG_T) + 2, sig = key + cols + 'x' + rows;
+  if (el.dataset.k === sig) return; // already built for this size
+  el.innerHTML = '<svg width="0" height="0" style="position:absolute" aria-hidden="true">' + BG[key].defs + '</svg>' + bgBelt(key, cols, rows, 0);
+  el.dataset.k = sig;
+}
+// Copy of the belt inside the sticky header, clipped to start at the "Day N · date" line.
+function bgHeader() {
+  const top = document.getElementById('top'), sub = document.getElementById('sub');
+  const key = document.body.classList.contains('has-bg') && themeFor(S.data);
+  if (!top || !sub || !key) return;
+  const ht = top.getBoundingClientRect().top, st = Math.round(sub.getBoundingClientRect().top - 4);
+  const d = document.createElement('div');
+  d.className = 'hdr-bg'; d.setAttribute('aria-hidden', 'true'); d.style.top = (st - ht) + 'px';
+  d.innerHTML = bgBelt(key, Math.ceil(innerWidth / BG_T) + 2, Math.ceil((top.getBoundingClientRect().bottom + BG_T) / BG_T) + 1, -st);
+  top.prepend(d);
+}
+addEventListener('resize', () => { clearTimeout(setBg.t); setBg.t = setTimeout(() => { if (S.data && document.body.classList.contains('has-bg')) { setBg(themeFor(S.data)); render(true); } }, 300); });
+
 function render(keepScroll) {
   if (!S.data) return;
   document.body.classList.remove('home');
+  setBg(themeFor(S.data));
   const y = window.scrollY;
   const views = { today: todayView, bookings: bookingsView, lists: listsView, info: infoView };
   document.getElementById('app').innerHTML = header() + (views[S.tab] || todayView)() + tabs();
   centerDay();
+  bgHeader();
   if (keepScroll) window.scrollTo(0, y);
 }
 function centerDay() {
