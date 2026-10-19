@@ -91,9 +91,25 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .item:first-child { border-top: 0; }
 .row { display: grid; grid-template-columns: 54px 30px 1fr auto; gap: 8px; align-items: center; padding: 11px 12px; cursor: pointer; width: 100%; text-align: left; background: none; border: 0; }
 .row .t { font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.row .t small { display: block; font-weight: 400; color: var(--muted); font-size: .7em; margin-top: 2px; }
+.row .t small { display: block; white-space: nowrap; font-weight: 400; color: var(--muted); font-size: .7em; margin-top: 2px; }
 .row .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--surface-2); display: grid; place-items: center; }
 .row .ic svg { width: 17px; height: 17px; }
+/* Category colours for the type icon (grey is kept for travel steps and the ALT/OPT tag) */
+:root { --nat-bg: #DDF0E0; --nat: #2E7D45; --food-bg: #FCE7D4; --food: #A4400B; --att-bg: #E8E2F8; --att: #5B45A8;
+  --act-bg: #DCEBFA; --act: #1F5FA8; --mkt-bg: #F8E1EC; --mkt: #A3346C; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --nat-bg: #17321F; --nat: #7FD39A; --food-bg: #3A2716; --food: #F7A06A;
+  --att-bg: #2A2342; --att: #B9A8F2; --act-bg: #16283D; --act: #8DBDF2; --mkt-bg: #3A1B2A; --mkt: #F09BC4; } }
+:root[data-theme="dark"] { --nat-bg: #17321F; --nat: #7FD39A; --food-bg: #3A2716; --food: #F7A06A;
+  --att-bg: #2A2342; --att: #B9A8F2; --act-bg: #16283D; --act: #8DBDF2; --mkt-bg: #3A1B2A; --mkt: #F09BC4; }
+.row .ic.t-nature { background: var(--nat-bg); color: var(--nat); }
+.row .ic.t-food { background: var(--food-bg); color: var(--food); }
+.row .ic.t-attraction { background: var(--att-bg); color: var(--att); }
+.row .ic.t-activity, .row .ic.t-activities { background: var(--act-bg); color: var(--act); }
+.row .ic.t-market, .row .ic.t-shop { background: var(--mkt-bg); color: var(--mkt); }
+/* ALT / OPT tag right before the title */
+.tag { display: inline-block; font-size: .66em; font-weight: 700; letter-spacing: .05em; padding: 2px 5px; margin-right: 6px; border-radius: 5px;
+  background: var(--surface-2); color: var(--muted); vertical-align: 2px; line-height: 1.2; }
+.row .t .tag { margin: 0 0 2px; font-size: .78em; vertical-align: 0; }
 .row .ti { min-width: 0; }
 .row .ti b { display: block; overflow-wrap: anywhere; line-height: 1.2; }
 .row .ti span { color: var(--muted); font-size: .85em; }
@@ -101,6 +117,10 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .item.open .row .chev { transform: rotate(180deg); }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .item.past .row { opacity: .45; }
+/* Alternatives & optionals sit indented under the main plan, with a thin guide line */
+.item.alt .row { padding-left: 36px; position: relative; }
+.item.alt .row::before { content: ''; position: absolute; left: 18px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--line); }
+.item.alt .detail { padding-left: 36px; }
 .item.now { background: var(--tangerine-soft); box-shadow: inset 4px 0 0 var(--tangerine); }
 .item.now .row .ic { background: var(--tangerine); color: #fff; }
 .item.now .row .t { color: var(--tangerine); }
@@ -214,7 +234,8 @@ const P = {
   Nature: '<path d="M12 21v-5m0 0l-6-1 6-11 6 11-6 1z"/>',
   Food: '<path d="M5 3v8a3 3 0 006 0V3M8 3v18M17 3c-2 2-2 6 0 8v10"/>',
   Market: '<path d="M4 9l2-5h12l2 5M4 9h16v11H4zM4 9a2.7 2.7 0 005.3 0 2.7 2.7 0 005.4 0A2.7 2.7 0 0020 9M10 20v-5h4v5"/>',
-  Activity: '<circle cx="12" cy="13" r="7"/><path d="M12 6V3m-2 1h4"/>',
+  Activity: '<path d="M18 11V6a2 2 0 00-4 0M14 10V4a2 2 0 00-4 0v2M10 10.5V6a2 2 0 00-4 0v8M18 8a2 2 0 114 0v6a8 8 0 01-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 012.8-2.8L7 15"/>',
+  Attraction: '<circle cx="12" cy="10" r="7"/><path d="M12 3v14M5 10h14M7 5l10 10M17 5L7 15M9 17l-2 4h10l-2-4"/>',
   Drive: '<path d="M3 17c4 0 4-8 9-8s5 8 9 8M12 3v2m0 14v2"/>',
   nav: '<path d="M3 11l18-8-8 18-2-8z"/>',
   phone: '<path d="M5 3h4l2 5-3 2a12 12 0 006 6l2-3 5 2v4a2 2 0 01-2 2A18 18 0 013 5a2 2 0 012-2z"/>',
@@ -228,7 +249,7 @@ const P = {
   back: '<path d="M15 5l-7 7 7 7"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
-P.Activities = P.Activity;
+P.Activities = P.Activity; P.Shop = P.Market;
 const icon = (n, cls) => '<svg' + (cls ? ' class="' + cls + '"' : '') + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[n] || P.Activity) + '</svg>';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -309,7 +330,7 @@ function build(data) {
     ev.push({ key: 'i' + i, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
       label: r.timeLabel || '', who: r.who || 'All', area: r.area || '', address: r.address || '', lat: num(r.lat), lng: num(r.lng),
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
-      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '' });
+      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '' });
   });
   (data.bookings || []).forEach((b) => {
     const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
@@ -505,17 +526,17 @@ function todayView() {
 }
 function itemHTML(e, cur, next, n) {
   const isNow = cur === e, isNext = next === e;
+  const isAlt = e.status === 'Alternative' || e.status === 'Optional';
   const past = !isNow && e.t1 <= n;
   const open = S.open.has(e.key);
-  const lab = e.label && !/^\d{1,2}:\d{2}/.test(e.label) && e.label !== e.start ? e.label : '';
+  const lab = e.duration ? '(' + e.duration + ')' : ''; // estimated time to spend, shown under the start time
   const chips = (isNow ? '<span class="chip now">Now</span>' : '') +
     (isNext && !isNow ? '<span class="chip next">Next · ' + esc(dur((e.t0 - n) / 60000)) + '</span>' : '') +
-    (e.status === 'Optional' ? '<span class="chip opt">Optional</span>' : e.status === 'Alternative' ? '<span class="chip opt">Alternative</span>' : '') +
     (e.who && e.who !== 'All' ? '<span class="chip who">' + esc(e.who) + '</span>' : '');
-  return '<div class="item' + (past ? ' past' : '') + (isNow ? ' now' : '') + (open ? ' open' : '') + '" data-key="' + e.key + '">' +
+  return '<div class="item' + (e.status === 'Optional' || e.status === 'Alternative' ? ' alt' : '') + (past ? ' past' : '') + (isNow ? ' now' : '') + (open ? ' open' : '') + '" data-key="' + e.key + '">' +
     '<button class="row" data-open="' + e.key + '" aria-expanded="' + open + '">' +
-    '<span class="t">' + esc(e.start || '–') + (lab ? '<small>' + esc(lab) + '</small>' : '') + '</span>' +
-    '<span class="ic">' + icon(e.type) + '</span>' +
+    '<span class="t">' + (isAlt ? (e.status === 'Alternative' ? '<span class="tag">ALT</span>' : e.status === 'Optional' ? '<span class="tag">OPT</span>' : '') : esc(e.start || '–')) + (lab ? '<small>' + esc(lab) + '</small>' : '') + '</span>' +
+    '<span class="ic t-' + esc(String(e.type || '').toLowerCase()) + '">' + icon(e.type) + '</span>' +
     '<span class="ti"><b>' + esc(e.title) + '</b><span>' + esc(e.sub || e.area || '') + (e.driveMin ? ' · ' + e.driveMin + ' min drive' : '') + '</span>' +
     (chips ? '<span class="chips" style="justify-content:flex-start;margin-top:4px">' + chips + '</span>' : '') + '</span>' +
     icon('chev', 'chev') + '</button>' + (open ? detail(e) : '') + '</div>';
@@ -523,7 +544,8 @@ function itemHTML(e, cur, next, n) {
 function detail(e) {
   const b = e.bookingId && S.bookings[e.bookingId];
   const kv = [];
-  if (e.start) kv.push(['Time', esc(e.start) + (e.end ? '–' + esc(e.end) : '') + (e.label && !/^(\d|from$|by$)/.test(e.label) ? ' · ' + esc(e.label) : '')]);
+  if (e.start && e.status !== 'Alternative' && e.status !== 'Optional') kv.push(['Time', esc(e.start) + (e.end ? '–' + esc(e.end) : '')]);
+  if (e.duration) kv.push(['Est. time', esc(e.duration)]);
   if (e.hours) kv.push(['Hours', esc(e.hours)]);
   if (e.address) kv.push(['Address', esc(e.address)]);
   if (b) kv.push(['Booking', '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>']);
@@ -637,7 +659,12 @@ function toggleItem(key) {
   if (!el || !e) return;
   const btn = el.querySelector('.row');
   if (S.open.has(key)) { S.open.delete(key); el.classList.remove('open'); const d = el.querySelector('.detail'); if (d) d.remove(); btn.setAttribute('aria-expanded', 'false'); }
-  else { S.open.add(key); el.classList.add('open'); el.insertAdjacentHTML('beforeend', detail(e)); btn.setAttribute('aria-expanded', 'true'); }
+  else {
+    // only one item open at a time; keep the tapped row where it is on screen
+    const y0 = btn.getBoundingClientRect().top;
+    [...S.open].forEach((k) => { if (k !== key) toggleItem(k); });
+    const dy = btn.getBoundingClientRect().top - y0; if (dy) window.scrollBy(0, dy);
+    S.open.add(key); el.classList.add('open'); el.insertAdjacentHTML('beforeend', detail(e)); btn.setAttribute('aria-expanded', 'true'); }
 }
 document.addEventListener('click', async (ev) => {
   const nav = ev.target.closest('a[href^="nmap://"]');
