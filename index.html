@@ -52,6 +52,7 @@ button { font: inherit; color: inherit; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid var(--tangerine); outline-offset: 2px; border-radius: 6px; }
 .num { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .mono { font-family: var(--font-mono); letter-spacing: .02em; }
 
 /* Header */
@@ -299,6 +300,81 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
   .bgm.roll { animation: bgroll 16s linear infinite; }
   @keyframes bgroll { to { transform: rotate(360deg); } }
 }
+
+/* ---------- v10: weather ----------
+   Day buttons get a small weather icon; only the selected day's icon moves.
+   The weather strip sits at the top of the day list (scrolls away, keeps the sticky header short).
+   'Typical' (no real forecast yet) = faded. Reduce Motion = still icons. */
+:root { --sun: #F2B705; --sun-edge: #C98F00; --rain: #2F7FC1; --snow: #4F84B5; --bolt: #F2B705; --cloud-bg: var(--surface); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --rain: #6CB4F0; --snow: #BFD9EF; } }
+:root[data-theme="dark"] { --rain: #6CB4F0; --snow: #BFD9EF; }
+.wx { overflow: visible; }
+.wx * { transform-box: view-box; }
+.wx .w-disc { fill: var(--sun); stroke: var(--sun-edge); stroke-width: 1; }
+.wx .w-rays { stroke: var(--sun); stroke-width: 2; }
+.wx .w-cloud { fill: var(--cloud-bg); stroke: currentColor; stroke-width: 1.7; }
+.wx .w-cloud2 { fill: var(--cloud-bg); stroke: currentColor; stroke-width: 1.5; opacity: .6; }
+.wx .w-drop { stroke: var(--rain); stroke-width: 2; }
+.wx .w-flake { fill: var(--snow); }
+.wx .w-bolt { fill: var(--bolt); stroke: var(--sun-edge); stroke-width: .8; stroke-linejoin: round; }
+.wx .w-fog { stroke: currentColor; stroke-width: 1.8; opacity: .7; }
+.day .wx { display: block; width: 22px; height: 22px; margin: 3px auto 0; color: var(--muted); }
+.day[aria-pressed="true"] { --cloud-bg: var(--ink); }
+.day[aria-pressed="true"] .wx { color: var(--bg); width: 24px; height: 24px; margin-top: 2px; }
+.day .wx.typ { opacity: .45; }
+.day .wx-none { display: block; height: 22px; margin-top: 3px; }
+/* strip */
+.wx-wrap { display: grid; gap: 4px; }
+.wx-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px 6px; }
+.wx-card.typ { border-style: dashed; }
+.wx-card.typ .wx-main, .wx-card.typ .wx-c { opacity: .6; }
+.wx-strip { display: flex; align-items: center; gap: 4px 9px; flex-wrap: wrap; cursor: pointer; }
+.wx-main .wx { width: 34px; height: 34px; display: block; }
+.wx-c { display: grid; justify-items: center; gap: 1px; min-width: 1.9em; }
+.wx-c svg { width: 15px; height: 15px; color: var(--muted); }
+.wx-c b { font-variant-numeric: tabular-nums; font-size: .95em; white-space: nowrap; line-height: 1.1; }
+.wx-c b small { font-weight: 400; color: var(--muted); font-size: .7em; margin-left: 1px; }
+.wx-c.hi-rain svg, .wx-c.hi-rain b { color: var(--rain); }
+.wx-c.hi-wind svg, .wx-c.hi-wind b { color: var(--tangerine); }
+.wx-c.hi-wind.gale { background: var(--warn-soft); border-radius: 8px; padding: 0 4px; }
+.wx-c.hi-wind.gale svg, .wx-c.hi-wind.gale b { color: var(--warn); }
+.wx-parts { display: flex; gap: 5px; padding-left: 8px; border-left: 1px solid var(--line); margin-left: auto; }
+.wx-parts span { display: grid; justify-items: center; gap: 1px; }
+.wx-parts .wx { width: 19px; height: 19px; }
+.wx-parts small { font-size: .62em; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.wx-tag { font-size: .66em; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
+.wx-meta { font-size: .74em; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; border-top: 1px solid var(--line); margin-top: 7px; padding-top: 5px; }
+.wx-meta .wx-twc { margin-left: auto; font-weight: 700; color: var(--sea); text-decoration: none; white-space: nowrap; padding: 4px 0; }
+.wx-legend { font-size: .78em; color: var(--muted); padding: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.wx-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.wx-legend svg { width: 14px; height: 14px; }
+.wx-inline { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wx-inline .wx { width: 22px; height: 22px; }
+.wx-inline svg:not(.wx) { width: 14px; height: 14px; color: var(--muted); vertical-align: -2px; }
+.wx-inline .mut { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .day.pop[aria-pressed="true"] .wx, .wx-wrap.pop .wx-main .wx { animation: wxpop .55s cubic-bezier(.3, 1.7, .5, 1); }
+  @keyframes wxpop { from { transform: scale(.5); opacity: .3; } }
+  .day[aria-pressed="true"] .wx .w-rays, .wx-main .wx .w-rays { transform-origin: var(--sx, 12px) var(--sy, 12px); animation: wxspin 9s linear infinite; }
+  @keyframes wxspin { to { transform: rotate(360deg); } }
+  .day[aria-pressed="true"] .wx .w-disc, .wx-main .wx .w-disc { transform-origin: var(--sx, 12px) var(--sy, 12px); animation: wxglow 2.4s ease-in-out infinite alternate; }
+  @keyframes wxglow { to { transform: scale(1.08); } }
+  .day[aria-pressed="true"] .wx .w-drift, .wx-main .wx .w-drift { animation: wxdrift 2.6s ease-in-out infinite alternate; }
+  .day[aria-pressed="true"] .wx .w-drift2, .wx-main .wx .w-drift2 { animation: wxdrift 3.4s ease-in-out infinite alternate-reverse; }
+  @keyframes wxdrift { from { transform: translateX(-1.2px); } to { transform: translateX(1.4px); } }
+  .day[aria-pressed="true"] .wx .w-drop, .wx-main .wx .w-drop { animation: wxrain .8s linear infinite; }
+  .day[aria-pressed="true"] .wx .w-flake, .wx-main .wx .w-flake { animation: wxsnow 2.2s linear infinite; }
+  .day[aria-pressed="true"] .wx .k2, .wx-main .wx .k2 { animation-delay: -.27s; }
+  .day[aria-pressed="true"] .wx .k3, .wx-main .wx .k3 { animation-delay: -.54s; }
+  .day[aria-pressed="true"] .wx .w-flake.k2, .wx-main .wx .w-flake.k2 { animation-delay: -.75s; }
+  .day[aria-pressed="true"] .wx .w-flake.k3, .wx-main .wx .w-flake.k3 { animation-delay: -1.5s; }
+  @keyframes wxrain { from { transform: translateY(-2.5px); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(3.5px); opacity: 0; } }
+  @keyframes wxsnow { from { transform: translate(0, -2.5px); opacity: 0; } 20% { opacity: 1; } 50% { transform: translate(1.2px, .5px); } to { transform: translate(-.6px, 4px); opacity: 0; } }
+  .day[aria-pressed="true"] .wx .w-bolt, .wx-main .wx .w-bolt { animation: wxflash 2.4s steps(1) infinite; }
+  @keyframes wxflash { 0%, 46%, 58%, 100% { opacity: 1; } 48%, 54% { opacity: .1; } 70%, 92% { opacity: .35; } }
+  .day[aria-pressed="true"] .wx .w-fog, .wx-main .wx .w-fog { animation: wxdrift 2s ease-in-out infinite alternate; }
+  .day[aria-pressed="true"] .wx .w-fog.k2, .wx-main .wx .w-fog.k2 { animation-direction: alternate-reverse; }
+}
 </style>
 </head>
 <body>
@@ -504,27 +580,201 @@ function pdfBtn(b, iconOnly) {
   return '<a class="btn small' + (iconOnly ? ' icon' : '') + '" href="' + esc(b.bookingPdfLink) + '" target="_blank" rel="noopener" aria-label="Booking PDF">' + icon('doc') + (iconOnly ? '' : 'Booking PDF') + '</a>';
 }
 
-/* ---------- weather (Open-Meteo, free; only within ~16 days) ---------- */
-const WMO = (c) => c == null ? '' : c === 0 ? 'Clear' : c <= 2 ? 'Partly cloudy' : c === 3 ? 'Cloudy' : c <= 48 ? 'Fog' : c <= 57 ? 'Drizzle' : c <= 67 ? 'Rain' : c <= 77 ? 'Snow' : c <= 82 ? 'Showers' : c <= 86 ? 'Snow showers' : 'Thunderstorm';
-async function loadWeather() {
-  const today = localParts(now()).date;
-  const want = S.days.filter((d) => d >= today && (toMs(d, '00:00') - now()) < 15 * 864e5 && !S.weather[d]);
-  for (const d of want) {
-    const e = S.events.find((x) => x.date === d && x.lat != null) || S.events.filter((x) => x.date < d && x.lat != null).pop();
-    if (!e) continue;
-    try {
-      const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + e.lat.toFixed(3) + '&longitude=' + e.lng.toFixed(3) +
-        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FSeoul&start_date=' + d + '&end_date=' + d;
-      const j = await (await fetch(u)).json();
-      if (j.daily) S.weather[d] = { code: j.daily.weather_code[0], hi: j.daily.temperature_2m_max[0], lo: j.daily.temperature_2m_min[0], rain: j.daily.precipitation_probability_max[0], wind: j.daily.wind_speed_10m_max[0] };
-    } catch (err) { /* offline: no weather */ }
-  }
-  if (want.length) { store.set('weather:' + S.tripId, S.weather); renderHeaderOnly(); }
+/* ---------- weather (Open-Meteo: free, no key, °C) ----------
+   0–15 days ahead: forecast (Open-Meteo's best-match blend of the top weather models).
+   Further out: 'typical' = the same dates over the past 10 years (no real forecast exists yet).
+   Refreshed when the saved copy is over 1 hour old; the last copy is kept for offline.
+   Where: each day uses its 'main area' (the planned stop closest to the middle of the day's stops);
+   an expanded stop shows the weather at that stop at its start time. */
+const WX_TTL = 36e5, WX_TYP_TTL = 7 * 864e5, WX_YEARS = 10;
+const wxKey = (lat, lng) => (Math.round(lat * 20) / 20).toFixed(2) + ',' + (Math.round(lng * 20) / 20).toFixed(2); // ~5 km grid
+const addDays = (d, k) => localParts(toMs(d, '12:00') + k * 864e5).date;
+function wxClass(c) {
+  if (c == null) return '';
+  if (c <= 1) return 'sun'; if (c === 2) return 'part'; if (c === 3) return 'cloud'; if (c <= 48) return 'fog';
+  if (c <= 67 || (c >= 80 && c <= 82)) return 'rain'; if (c <= 77 || c === 85 || c === 86) return 'snow'; return 'storm';
 }
-function weatherText(d) {
-  const w = S.weather[d];
+const WX_NAME = { sun: 'Sunny', part: 'Partly cloudy', cloud: 'Cloudy', fog: 'Foggy', rain: 'Rain', snow: 'Snow', storm: 'Thunderstorm' };
+const WMO = (c) => c == null ? '' : c === 0 ? 'Clear' : c === 1 ? 'Mostly clear' : c === 2 ? 'Partly cloudy' : c === 3 ? 'Cloudy' : c <= 48 ? 'Fog' : c <= 57 ? 'Drizzle' : c <= 67 ? 'Rain' : c <= 77 ? 'Snow' : c <= 82 ? 'Showers' : c <= 86 ? 'Snow showers' : 'Thunderstorm';
+const CLOUD = 'M7.2 18.5h10.3a3.9 3.9 0 00.3-7.8 5.3 5.3 0 00-10.2-.9 4.4 4.4 0 00-.4 8.7z';
+function rays(cx, cy, r1, r2) {
+  let d = '';
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, c = Math.cos(a), s2 = Math.sin(a); d += 'M' + (cx + c * r1).toFixed(2) + ' ' + (cy + s2 * r1).toFixed(2) + 'L' + (cx + c * r2).toFixed(2) + ' ' + (cy + s2 * r2).toFixed(2); }
+  return '<path class="w-rays" d="' + d + '"/>';
+}
+const WXP = {
+  sun: rays(12, 12, 7, 9.6) + '<circle class="w-disc" cx="12" cy="12" r="4.6"/>',
+  part: '<g style="--sx:8.5px;--sy:8.5px">' + rays(8.5, 8.5, 5, 7) + '<circle class="w-disc" cx="8.5" cy="8.5" r="3.3"/></g><g class="w-drift"><path class="w-cloud" transform="translate(1.6 1.4)" d="' + CLOUD + '"/></g>',
+  cloud: '<g class="w-drift2"><path class="w-cloud2" transform="translate(4 -3.4) scale(.78)" d="' + CLOUD + '"/></g><g class="w-drift"><path class="w-cloud" transform="translate(-.6 .6)" d="' + CLOUD + '"/></g>',
+  fog: '<g class="w-drift"><path class="w-cloud" transform="translate(0 -3)" d="' + CLOUD + '"/></g><path class="w-fog" d="M4 18.5h12"/><path class="w-fog k2" d="M8 21.5h12"/>',
+  rain: '<path class="w-drop" d="M8.5 18.6l-1 2.6"/><path class="w-drop k2" d="M12.5 18.6l-1 2.6"/><path class="w-drop k3" d="M16.5 18.6l-1 2.6"/><g class="w-drift"><path class="w-cloud" transform="translate(0 -3.4)" d="' + CLOUD + '"/></g>',
+  snow: '<circle class="w-flake" cx="8.3" cy="19.6" r="1.55"/><circle class="w-flake k2" cx="12.3" cy="20.6" r="1.55"/><circle class="w-flake k3" cx="16.3" cy="19.6" r="1.55"/><g class="w-drift"><path class="w-cloud" transform="translate(0 -3.4)" d="' + CLOUD + '"/></g>',
+  storm: '<path class="w-drop" d="M7.6 18.6l-.9 2.3"/><path class="w-drop k3" d="M17 18.6l-.9 2.3"/><g class="w-drift"><path class="w-cloud" transform="translate(0 -3.6)" d="' + CLOUD + '"/></g><path class="w-bolt" d="M12.8 13.2l-3 5h2.4l-1.2 4.6 4.2-6h-2.5l1.4-3.6z"/>'
+};
+const wxIcon = (c, cls, label) => { const k = wxClass(c); if (!k) return '';
+  return '<svg class="wx w-' + k + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"' +
+    (label ? ' role="img" aria-label="' + esc(label) + '"' : ' aria-hidden="true"') + '>' + WXP[k] + '</svg>'; };
+// small line icons used in the strip
+const WXI = {
+  thermo: '<path d="M10 14.5V5a2 2 0 014 0v9.5a4 4 0 11-4 0z"/><path d="M12 9v7"/>',
+  feels: '<circle cx="12" cy="4.5" r="2"/><path d="M12 7.5v7m0 0l-3 6.5m3-6.5l3 6.5M7.5 11h9"/>',
+  drop: '<path d="M12 3s6 6.6 6 11a6 6 0 01-12 0c0-4.4 6-11 6-11z"/>',
+  wind: '<path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7"/>'
+};
+const wxi = (n) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + WXI[n] + '</svg>';
+
+// The day's 'main area': planned (non-alternative) stops with coordinates; the one closest to their average.
+function dayPoint(d) {
+  const has = (e) => e.lat != null && e.lng != null && e.type !== 'Flight';
+  let pts = S.events.filter((e) => e.date === d && has(e) && live(e) && e.status !== 'Optional');
+  if (!pts.length) pts = S.events.filter((e) => e.date === d && has(e));
+  if (!pts.length) { const prev = S.events.filter((e) => e.date < d && has(e)).pop() || S.events.find(has); return prev ? { lat: prev.lat, lng: prev.lng } : null; }
+  const m = pts.reduce((a, e) => ({ lat: a.lat + e.lat / pts.length, lng: a.lng + e.lng / pts.length }), { lat: 0, lng: 0 });
+  const best = pts.reduce((b, e) => ((e.lat - m.lat) ** 2 + (e.lng - m.lng) ** 2 < (b.lat - m.lat) ** 2 + (b.lng - m.lng) ** 2 ? e : b), pts[0]);
+  return { lat: best.lat, lng: best.lng };
+}
+function wxTz() { return encodeURIComponent(((S.data && S.data.trip) || {}).timezone || 'Asia/Seoul'); }
+async function wxGet(url) { const r = await fetch(url); if (!r.ok) throw new Error('weather ' + r.status); const j = await r.json(); return Array.isArray(j) ? j : [j]; }
+let wxBusy = false;
+async function loadWeather(force) {
+  if (!S.days.length || wxBusy) return;
+  wxBusy = true;
+  const W = S.weather, n = now(), today = localParts(n).date, last = addDays(today, 15);
+  let changed = false;
+  try {
+    // 1) forecast for trip days within 15 days: the day's main area + every stop, in one request
+    const fDays = S.days.filter((d) => d >= today && d <= last);
+    if (fDays.length) {
+      const pts = {};
+      fDays.forEach((d) => { const p = dayPoint(d); if (p) pts[wxKey(p.lat, p.lng)] = 1; });
+      S.events.forEach((e) => { if (e.lat != null && e.lng != null && e.type !== 'Flight' && fDays.includes(e.date)) pts[wxKey(e.lat, e.lng)] = 1; });
+      const keys = Object.keys(pts).sort(), sig = keys.join(';') + '|' + fDays[0] + '|' + fDays[fDays.length - 1];
+      if (keys.length && (force || !W.at || n - W.at > WX_TTL || W.sig !== sig)) {
+        W.f = W.f || {};
+        for (let i = 0; i < keys.length; i += 40) {
+          const ks = keys.slice(i, i + 40), ll = ks.map((k) => k.split(','));
+          const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + ll.map((x) => x[0]).join(',') + '&longitude=' + ll.map((x) => x[1]).join(',') +
+            '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max' +
+            '&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,wind_speed_10m' +
+            '&timezone=' + wxTz() + '&start_date=' + fDays[0] + '&end_date=' + fDays[fDays.length - 1];
+          const arr = await wxGet(u);
+          arr.forEach((o, j) => {
+            const L = W.f[ks[j]] = W.f[ks[j]] || { d: {}, h: {} }, dl = o.daily || {}, hl = o.hourly || {};
+            (dl.time || []).forEach((t, x) => { L.d[t] = [dl.weather_code[x], dl.temperature_2m_max[x], dl.temperature_2m_min[x], dl.apparent_temperature_max[x],
+              dl.apparent_temperature_min[x], dl.precipitation_probability_max[x], dl.wind_speed_10m_max[x], dl.wind_gusts_10m_max[x]]; });
+            (hl.time || []).forEach((t, x) => { const dd = t.slice(0, 10), hh = +t.slice(11, 13);
+              (L.h[dd] = L.h[dd] || [])[hh] = [hl.temperature_2m[x], hl.apparent_temperature[x], hl.weather_code[x], hl.precipitation_probability[x], hl.wind_speed_10m[x]]; });
+          });
+        }
+        W.at = n; W.sig = sig; changed = true;
+      }
+    }
+    // 2) 'typical' for trip days beyond the forecast range (past 10 years, same dates ±3 days)
+    const tDays = S.days.filter((d) => d > last);
+    if (tDays.length) {
+      const dk = {}; tDays.forEach((d) => { const p = dayPoint(d); if (p) dk[d] = wxKey(p.lat, p.lng); });
+      const keys = [...new Set(Object.values(dk))].sort(), sig = keys.join(';') + '|' + tDays.join(',');
+      if (keys.length && (!W.typAt || n - W.typAt > WX_TYP_TTL || W.typSig !== sig)) {
+        const ll = keys.map((k) => k.split(',')), lo = tDays[0], hi = tDays[tDays.length - 1];
+        const shiftY = (d, k) => (+d.slice(0, 4) - k) + d.slice(4);
+        const years = await Promise.all(Array.from({ length: WX_YEARS }, (_, i) => i + 1).map((k) =>
+          wxGet('https://archive-api.open-meteo.com/v1/archive?latitude=' + ll.map((x) => x[0]).join(',') + '&longitude=' + ll.map((x) => x[1]).join(',') +
+            '&start_date=' + addDays(shiftY(lo, k), -3) + '&end_date=' + addDays(shiftY(hi, k), 3) +
+            '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=' + wxTz())
+            .then((arr) => ({ k, arr }))));
+        const typ = {}, avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+        tDays.forEach((d) => {
+          const li = keys.indexOf(dk[d]); if (li < 0) return;
+          const smp = [];
+          years.forEach(({ k, arr }) => {
+            const o = arr[li], dl = o && o.daily; if (!dl) return;
+            const from = addDays(shiftY(d, k), -3), to = addDays(shiftY(d, k), 3);
+            dl.time.forEach((t, x) => { if (t >= from && t <= to && dl.temperature_2m_max[x] != null) smp.push([dl.weather_code[x], dl.temperature_2m_max[x], dl.temperature_2m_min[x],
+              dl.apparent_temperature_max[x], dl.apparent_temperature_min[x], dl.precipitation_sum[x], dl.wind_speed_10m_max[x], dl.wind_gusts_10m_max[x]]); });
+          });
+          if (!smp.length) return;
+          const col = (i) => smp.map((r) => r[i]).filter((v) => v != null);
+          const wet = smp.filter((r) => (r[5] || 0) >= 1).length / smp.length;
+          const snowy = smp.filter((r) => wxClass(r[0]) === 'snow').length / smp.length;
+          let c;
+          if (wet >= .5) c = snowy >= .25 ? 71 : 61;
+          else { const cnt = { 0: 0, 2: 0, 3: 0 }; smp.forEach((r) => { const k2 = wxClass(r[0]); cnt[k2 === 'sun' ? 0 : k2 === 'part' ? 2 : 3]++; });
+            c = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; }
+          typ[d] = [c, avg(col(1)), avg(col(2)), avg(col(3)), avg(col(4)), Math.round(wet * 100), avg(col(6)), avg(col(7)), smp.length];
+        });
+        const y1 = +lo.slice(0, 4) - 1;
+        W.typ = typ; W.typYears = (y1 - WX_YEARS + 1) + '–' + y1; W.typAt = n; W.typSig = sig; changed = true;
+      }
+    }
+  } catch (err) { /* offline or service down: keep the saved copy */ }
+  wxBusy = false;
+  if (changed) { store.set('wx:' + S.tripId, W); if (S.tab === 'today') render(true); }
+}
+// AM 6–11, PM 12–17, EVE 18–22: the most significant weather in each part (a single wet hour is ignored)
+function wxParts(hours) {
+  if (!hours) return null;
+  const part = (a, b) => {
+    const hs = hours.slice(a, b + 1).filter(Boolean); if (!hs.length) return null;
+    const wetN = hs.filter((h) => h[2] >= 50).length;
+    const pick = hs.filter((h) => h[2] < 50 || wetN >= 2).reduce((m, h) => (h[2] > m ? h[2] : m), -1);
+    return pick < 0 ? null : pick;
+  };
+  return [part(6, 11), part(12, 17), part(18, 22)];
+}
+function wxDay(d) {
+  const W = S.weather || {}, p = dayPoint(d);
+  const L = p && W.f && W.f[wxKey(p.lat, p.lng)];
+  if (L && L.d[d] && L.d[d][0] != null) { const x = L.d[d];
+    return { kind: 'f', c: x[0], hi: x[1], lo: x[2], ahi: x[3], alo: x[4], rain: x[5], wind: x[6], gust: x[7], parts: wxParts(L.h[d]), p }; }
+  if (W.typ && W.typ[d]) { const x = W.typ[d];
+    return { kind: 't', c: x[0], hi: x[1], lo: x[2], ahi: x[3], alo: x[4], rain: x[5], wind: x[6], gust: x[7], p }; }
+  return null;
+}
+function wxAt(e) {
+  const W = S.weather || {};
+  if (e.lat == null || e.lng == null || !W.f || e.type === 'Flight') return null;
+  const L = W.f[wxKey(e.lat, e.lng)], hh = +(String(e.start || '12:00').split(':')[0]);
+  const h = L && L.h[e.date] && L.h[e.date][hh];
+  return h && h[0] != null ? { t: h[0], a: h[1], c: h[2], rain: h[3], wind: h[4] } : null;
+}
+const deg = (v) => Math.round(v) + '°';
+const range = (lo, hi) => Math.round(lo) === Math.round(hi) ? deg(hi) : Math.round(lo) + '–' + deg(hi);
+function ago(ms) { const m = Math.round((now() - ms) / 6e4); return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
+function twcLink(w) { // The Weather Channel: 10-day page for forecasts, month page for 'typical' days
+  if (!w || !w.p) return '';
+  return 'https://weather.com/weather/' + (w.kind === 't' ? 'monthly' : 'tenday') + '/l/' + w.p.lat.toFixed(2) + ',' + w.p.lng.toFixed(2) + '?unit=m';
+}
+function wxStrip(d) {
+  const w = wxDay(d);
   if (!w) return '';
-  return WMO(w.code) + ' · ' + Math.round(w.lo) + '–' + Math.round(w.hi) + '°C · wind ' + Math.round(w.wind) + ' km/h' + (w.rain != null ? ' · rain ' + w.rain + '%' : '');
+  const lead = Math.round((toMs(d, '12:00') - toMs(localParts(now()).date, '12:00')) / 864e5);
+  const windy = w.wind >= 30 || w.gust >= 50, gale = w.wind >= 45 || w.gust >= 70;
+  const name = WX_NAME[wxClass(w.c)];
+  const cells = '<span class="wx-main">' + wxIcon(w.c, '', name) + '</span>' +
+    '<span class="wx-c" title="Temperature">' + wxi('thermo') + '<b>' + range(w.lo, w.hi) + '</b></span>' +
+    '<span class="wx-c" title="Feels like">' + wxi('feels') + '<b>' + range(w.alo, w.ahi) + '</b></span>' +
+    (w.rain != null ? '<span class="wx-c' + (w.rain >= 50 ? ' hi-rain' : '') + '" title="' + (w.kind === 't' ? 'Rainy days in past years' : 'Chance of rain') + '">' + wxi('drop') + '<b>' + Math.round(w.rain) + '%</b></span>' : '') +
+    (w.wind != null ? '<span class="wx-c' + (windy ? ' hi-wind' : '') + (gale ? ' gale' : '') + '" title="Wind (km/h)' + (w.gust != null ? ', gusts ' + Math.round(w.gust) : '') + '">' + wxi('wind') + '<b>' + Math.round(w.wind) + '</b></span>' : '') +
+    (w.parts && w.parts.some((x) => x != null) ? '<span class="wx-parts">' + ['AM', 'PM', 'EVE'].map((l, i) => '<span title="' + (WMO(w.parts[i]) || '–') + '">' +
+      (w.parts[i] != null ? wxIcon(w.parts[i]) : '<svg class="wx" viewBox="0 0 24 24"></svg>') + '<small>' + l + '</small></span>').join('') + '</span>' : '') +
+    (w.kind === 't' ? '<span class="wx-tag">Typical</span>' : '');
+  const twc = twcLink(w);
+  const meta = (CONFIG.wxSample ? '<span><b>Sample weather – preview only</b></span>' : '') +
+    (w.kind === 't' ? '<span>Typical for this date · avg ' + esc(S.weather.typYears || '') + ' · forecast from ' + dayLabel(addDays(d, -15)) + '</span>'
+      : '<span>' + (lead > 7 ? 'Early forecast · may change' : 'Forecast') + (S.weather.at ? ' · updated ' + ago(S.weather.at) : '') + '</span>');
+  const legend = S.wxLegend ? '<div class="wx-legend">' +
+    '<span>' + wxi('thermo') + 'Temperature</span><span>' + wxi('feels') + 'Feels like</span><span>' + wxi('drop') + (w.kind === 't' ? 'Rainy days' : 'Rain chance') + '</span>' +
+    '<span>' + wxi('wind') + 'Wind km/h</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div>' : '';
+  return '<div class="wx-wrap' + (S.wxPop ? ' pop' : '') + '"><div class="wx-card' + (w.kind === 't' ? ' typ' : '') + '">' +
+    '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for legend') + '">' + cells + '</div>' +
+    legend + '<div class="wx-meta">' + meta + (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener">The Weather Channel ↗</a>' : '') + '</div></div></div>';
+}
+function wxStop(e) {
+  const h = wxAt(e);
+  if (!h) return '';
+  return '<span class="wx-inline">' + wxIcon(h.c, '', WMO(h.c)) + '<b>' + deg(h.t) + '</b><span class="mut">' + wxi('feels') + deg(h.a) + '</span>' +
+    (h.rain != null ? '<span class="mut">' + wxi('drop') + Math.round(h.rain) + '%</span>' : '') +
+    (h.wind != null ? '<span class="mut">' + wxi('wind') + Math.round(h.wind) + ' km/h</span>' : '') + '</span>';
 }
 
 /* ---------- HOME: trip list ---------- */
@@ -581,8 +831,7 @@ function header() {
   const d = S.day, todayD = localParts(now()).date;
   let sub;
   if (S.tab === 'today' && d) {
-    const wt = weatherText(d);
-    sub = '<span><b>Day ' + (S.days.indexOf(d) + 1) + '</b> · ' + dayLabel(d) + '</span>' + (wt ? '<span>' + esc(wt) + '</span>' : '');
+    sub = '<span><b>Day ' + (S.days.indexOf(d) + 1) + '</b> · ' + dayLabel(d) + '</span>';
   } else sub = '<span class="num">' + esc(rangeLabel(t.start, t.end)) + '</span>';
   let h = '<header class="top" id="top"><div class="top-row"><a class="icon-btn" href="#" aria-label="All trips">' + icon('back') + '</a>' +
     '<h1>' + esc(t.destination || t.tripName || 'Trip') + '</h1>' +
@@ -592,18 +841,13 @@ function header() {
   if (S.tab === 'today') {
     h += '<nav class="days" id="days" aria-label="Trip days">' + S.days.map((x) => {
       const p = dparts(x);
-      return '<button class="day' + (x === todayD ? ' today' : '') + '" data-day="' + x + '" aria-pressed="' + (x === d) + '"><small>' + p.w + '</small><b class="num">' + p.d + '</b></button>';
+      const w = wxDay(x), lab = w ? (w.kind === 't' ? 'typically ' : '') + WX_NAME[wxClass(w.c)] : '';
+      return '<button class="day' + (x === todayD ? ' today' : '') + (x === d && S.wxPop ? ' pop' : '') + '" data-day="' + x + '" aria-pressed="' + (x === d) + '"' + (lab ? ' aria-label="' + esc(dayLabel(x) + ', ' + lab) + '"' : '') + '><small>' + p.w + '</small><b class="num">' + p.d + '</b>' +
+        (w ? wxIcon(w.c, w.kind === 't' ? 'typ' : '') : '<span class="wx-none"></span>') + '</button>';
     }).join('') + '</nav>';
   }
   return h + '</header>';
 }
-function renderHeaderOnly() {
-  const sub = document.getElementById('sub');
-  if (!sub || S.tab !== 'today') return;
-  const wt = weatherText(S.day);
-  sub.innerHTML = '<span><b>Day ' + (S.days.indexOf(S.day) + 1) + '</b> · ' + dayLabel(S.day) + '</span>' + (wt ? '<span>' + esc(wt) + '</span>' : '');
-}
-
 function warnOrText(t) {
   const parts = String(t).split(' · ');
   const w = parts.filter((p) => p.includes('⚠')), rest = parts.filter((p) => !p.includes('⚠'));
@@ -616,8 +860,9 @@ function todayView() {
   const { cur, next } = nowNext();
   let banner = '';
   if (first && n < first.t0 && S.day === S.days[0]) banner = '<div class="banner">Trip starts in ' + dur((first.t0 - n) / 60000) + '</div>';
-  if (!list.length) return '<main>' + banner + '<div class="tl"><div class="empty">Nothing planned yet for ' + dayLabel(S.day) + '.</div></div></main>';
-  return '<main>' + banner + '<div class="tl" id="tl">' + list.map((e) => itemHTML(e, cur, next, n)).join('') + '</div></main>';
+  const wx = wxStrip(S.day);
+  if (!list.length) return '<main>' + banner + wx + '<div class="tl"><div class="empty">Nothing planned yet for ' + dayLabel(S.day) + '.</div></div></main>';
+  return '<main>' + banner + wx + '<div class="tl" id="tl">' + list.map((e) => itemHTML(e, cur, next, n)).join('') + '</div></main>';
 }
 function itemHTML(e, cur, next, n) {
   const isNow = cur === e, isNext = next === e;
@@ -641,6 +886,7 @@ function detail(e) {
   const kv = [];
   if (e.start && e.status !== 'Alternative' && e.status !== 'Optional') kv.push(['Time', esc(e.start) + (e.end ? '–' + esc(e.end) : '')]);
   if (e.duration) kv.push(['Est. time', esc(e.duration)]);
+  const wxs = wxStop(e); if (wxs) kv.push(['Weather', wxs]);
   if (e.hours) kv.push(['Hours', esc(e.hours)]);
   if (e.address) kv.push(['Address', esc(e.address)]);
   if (b) kv.push(['Booking', '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>']);
@@ -784,6 +1030,7 @@ function render(keepScroll) {
   document.getElementById('app').innerHTML = header() + (views[S.tab] || todayView)() + tabs();
   centerDay();
   bgHeader();
+  S.wxPop = false;
   if (keepScroll) window.scrollTo(0, y);
 }
 function centerDay() {
@@ -830,10 +1077,11 @@ document.addEventListener('click', async (ev) => {
     }
     return;
   }
+  if (!ev.target.closest('.wx-twc') && ev.target.closest('#wxs')) { S.wxLegend = !S.wxLegend; render(true); return; }
   const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],#big,#refresh');
   if (!el) return;
   if (el.dataset.tab) { S.tab = el.dataset.tab; store.set('tab', S.tab); render(); window.scrollTo(0, 0); }
-  else if (el.dataset.day) { S.day = el.dataset.day; S.open.clear(); render(); window.scrollTo(0, 0); }
+  else if (el.dataset.day) { S.day = el.dataset.day; S.open.clear(); S.wxPop = true; render(); window.scrollTo(0, 0); }
   else if (el.dataset.open) { toggleItem(el.dataset.open); }
   else if (el.dataset.copy != null) {
     ev.stopPropagation();
@@ -856,8 +1104,8 @@ async function loadTrip(id, manual) {
   const fresh = S.tripId !== id;
   S.tripId = id;
   if (fresh) {
-    S.open.clear(); S.day = null; S.tab = store.get('tab', 'today');
-    S.weather = store.get('weather:' + id, {});
+    S.open.clear(); S.day = null; S.wxPop = true; S.tab = store.get('tab', 'today');
+    S.weather = store.get('wx:' + id, {});
     const cached = store.get('data:' + id, null);
     if (cached) accept(cached);
     else document.getElementById('app').innerHTML = '<div class="gate"><p>Loading trip…</p></div>';
@@ -867,12 +1115,12 @@ async function loadTrip(id, manual) {
     if (j.ok) {
       store.set('data:' + id, j);
       const t = myTrips(); if (t[id]) { t[id].summary = summaryFrom(id, j); saveTrips(t); }
-      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(); }
+      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(manual); }
     } else if (j.error === 'bad_passcode') {
       const t = myTrips(); delete t[id]; saveTrips(t); store.set('data:' + id, null);
       location.hash = ''; homeView('The passcode for that trip has changed. Ask Cody for the new one.');
     } else if (manual) toast('The sheet could not be read just now');
-  } catch (e) { if (manual || !S.data) toast('No signal. Showing the saved copy.'); }
+  } catch (e) { if (manual || !S.data) toast('No signal. Showing the saved copy.'); if (S.data) loadWeather(); }
 }
 function accept(data, keepScroll) {
   S.data = data; build(data);
