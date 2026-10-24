@@ -441,6 +441,42 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .wx-row .wx-parts { align-self: center; margin-left: 2px; }
 .wx-row .wx-tag { align-self: center; margin-left: 2px; }
 .wx-row .wx-twc { align-self: center; margin-left: 0; }
+
+/* ---------- v10g: AM/PM/EVE first; temp + feels share one static light-orange tile; rain and wind colours scale with strength ---------- */
+:root { --tile-warm: #FFF0E2; --tile-warm-ic: #C2611A;
+  --r0: #EEF5FC; --r1: #D3E6F8; --r2: #4C93D6; --r3: #1D5A9E;
+  --w0: #DDF0E0; --w0i: #2E7D45; --w1: #FFF1C2; --w1i: #946200; --w2: #FFE0C2; --w2i: #C2550E; --w3: #FCDAD4; --w3i: #B42318; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --tile-warm: #33251A; --tile-warm-ic: #F59A45;
+  --r0: #16222E; --r1: #1B3550; --r2: #22568F; --r3: #2F7FD0;
+  --w0: #17321F; --w0i: #7FD39A; --w1: #3A3115; --w1i: #F2C94C; --w2: #3E2614; --w2i: #F59A45; --w3: #45201C; --w3i: #FF8A7A; } }
+:root[data-theme="dark"] { --tile-warm: #33251A; --tile-warm-ic: #F59A45;
+  --r0: #16222E; --r1: #1B3550; --r2: #22568F; --r3: #2F7FD0;
+  --w0: #17321F; --w0i: #7FD39A; --w1: #3A3115; --w1i: #F2C94C; --w2: #3E2614; --w2i: #F59A45; --w3: #45201C; --w3i: #FF8A7A; }
+.t-temp, .t-feel { background: var(--tile-warm); }
+.t-temp svg, .t-feel svg { color: var(--tile-warm-ic); }
+.t-rain.r0 { background: var(--r0); } .t-rain.r1 { background: var(--r1); }
+.t-rain.r0 svg, .t-rain.r1 svg { color: var(--act); }
+.t-rain.r2 { background: var(--r2); } .t-rain.r3 { background: var(--r3); }
+.t-rain.r2 svg, .t-rain.r2 b, .t-rain.r3 svg, .t-rain.r3 b { color: #fff; }
+.t-wind.w0 { background: var(--w0); } .t-wind.w0 svg { color: var(--w0i); }
+.t-wind.w1 { background: var(--w1); } .t-wind.w1 svg { color: var(--w1i); }
+.t-wind.w2 { background: var(--w2); } .t-wind.w2 svg, .t-wind.w2 b { color: var(--w2i); }
+.t-wind.w3 { background: var(--w3); box-shadow: inset 0 0 0 1.5px var(--w3i); } .t-wind.w3 svg, .t-wind.w3 b { color: var(--w3i); }
+.wx-row .wx-parts { margin: 0 1px 0 0; padding: 0 7px 0 0; border-left: 0; border-right: 1px solid var(--line); }
+.wx-row .wx-tag { margin: 0 2px 0 0; }
+
+/* ---------- v10h: expanded itinerary item = thin glowing ring (same as the selected day) ---------- */
+.item { position: relative; }
+.item.open::before { content: ''; position: absolute; inset: 0; border-radius: 12px; padding: 1.5px; pointer-events: none; z-index: 2;
+  background: conic-gradient(from var(--glint), transparent 0 78%, rgba(255, 246, 214, .55) 86%, #fff 90%, rgba(255, 246, 214, .55) 94%, transparent 100%),
+    conic-gradient(from var(--ring), #E8761A, #F2B705, #3FB3A9, #E8761A);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.tl .item:first-child.open::before { border-radius: calc(var(--r) - 1px) calc(var(--r) - 1px) 12px 12px; }
+.tl .item:last-child.open::before { border-radius: 12px 12px calc(var(--r) - 1px) calc(var(--r) - 1px); }
+.tl .item:only-child.open::before { border-radius: calc(var(--r) - 1px); }
+@media (prefers-reduced-motion: no-preference) {
+  .item.open::before { animation: dayring 4s linear infinite, dayglint 1.8s cubic-bezier(.45, .05, .55, .95) infinite; }
+}
 </style>
 </head>
 <body>
@@ -833,19 +869,21 @@ function wxStrip(d) {
   const parts = w.parts && w.parts.some((x) => x != null) ? '<span class="wx-parts">' + ['AM', 'PM', 'EVE'].map((l, i) => '<span title="' + (WMO(w.parts[i]) || '–') + '">' +
     (w.parts[i] != null ? wxIcon(w.parts[i]) : '<svg class="wx" viewBox="0 0 24 24"></svg>') + '<small>' + l + '</small></span>').join('') + '</span>' : '';
   const tile = (cls, ic, val, title) => '<span class="wx-t ' + cls + '" title="' + title + '">' + wxi(ic) + '<b>' + val + '</b></span>';
-  const row = '<div class="wx-row">' +
+  const first = parts || (w.kind === 't' ? '<span class="wx-tag">Typical</span>' : '');
+  const rl = w.rain == null ? 0 : w.rain >= 80 ? 3 : w.rain >= 50 ? 2 : w.rain >= 20 ? 1 : 0;
+  const wl = gale ? 3 : windy ? 2 : (w.wind >= 20 || w.gust >= 40) ? 1 : 0;
+  const row = '<div class="wx-row">' + first +
     tile('t-temp', 'thermo', range(w.lo, w.hi), 'Temperature') +
     tile('t-feel', 'feels', range(w.alo, w.ahi), 'Feels like') +
-    (w.rain != null ? tile('t-rain' + (w.rain >= 50 ? ' hi' : ''), 'drop', Math.round(w.rain) + '%', w.kind === 't' ? 'Rainy days in past years' : 'Chance of rain') : '') +
-    (w.wind != null ? tile('t-wind' + (windy ? ' windy' : '') + (gale ? ' gale' : ''), 'wind', Math.round(w.wind), 'Wind ' + Math.round(w.wind) + ' km/h' + (w.gust != null ? ', gusts ' + Math.round(w.gust) : '')) : '') +
-    (parts || (w.kind === 't' ? '<span class="wx-tag">Typical</span>' : '')) +
+    (w.rain != null ? tile('t-rain r' + rl, 'drop', Math.round(w.rain) + '%', w.kind === 't' ? 'Rainy days in past years' : 'Chance of rain') : '') +
+    (w.wind != null ? tile('t-wind w' + wl, 'wind', Math.round(w.wind), 'Wind ' + Math.round(w.wind) + ' km/h' + (w.gust != null ? ', gusts ' + Math.round(w.gust) : '')) : '') +
     (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener" title="The Weather Channel" aria-label="Open The Weather Channel forecast">' + wxi('twc') + '</a>' : '') + '</div>';
   const meta = (CONFIG.wxSample ? '<span><b>Sample weather – preview only</b></span>' : '') +
     (w.kind === 't' ? '<span>Typical for this date · avg ' + esc(S.weather.typYears || '') + ' · forecast from ' + dayLabel(addDays(d, -15)) + '</span>'
       : '<span>' + (lead > 7 ? 'Early forecast · may change' : 'Forecast') + (S.weather.at ? ' · updated ' + ago(S.weather.at) : '') + '</span>');
   const legend = S.wxLegend ? '<div class="wx-legend"><span><b>' + esc(name) + '</b></span>' +
     '<span>' + wxi('thermo') + 'Temperature</span><span>' + wxi('feels') + 'Feels like</span><span>' + wxi('drop') + (w.kind === 't' ? 'Rainy days' : 'Rain chance') + '</span>' +
-    '<span>' + wxi('wind') + 'Wind km/h</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div><div class="wx-meta">' + meta + '</div>' : '';
+    '<span>' + wxi('wind') + 'Wind km/h</span><span>Rain and wind colours deepen as they get stronger</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div><div class="wx-meta">' + meta + '</div>' : '';
   return '<div class="wx-wrap' + (S.wxPop ? ' pop' : '') + '"><div class="wx-card' + (w.kind === 't' ? ' typ' : '') + '">' +
     '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for details') + '">' + row + '</div>' +
     legend + '</div></div>';
