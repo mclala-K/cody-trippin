@@ -328,8 +328,12 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .wx-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px 6px; }
 .wx-card.typ { border-style: dashed; }
 .wx-card.typ .wx-main, .wx-card.typ .wx-c { opacity: .6; }
-.wx-strip { display: flex; align-items: center; gap: 4px 9px; flex-wrap: wrap; cursor: pointer; }
-.wx-main .wx { width: 34px; height: 34px; display: block; }
+.wx-strip { display: flex; align-items: center; gap: 4px 5px; flex-wrap: wrap; cursor: pointer; }
+.wx-card { padding: 7px 8px; }
+.wx-c b { font-size: .9em; }
+.wx-c { min-width: 0; }
+.wx-main .wx { width: 30px; height: 30px; display: block; }
+.wx-c.hi-wind.gale { padding: 0 3px; }
 .wx-c { display: grid; justify-items: center; gap: 1px; min-width: 1.9em; }
 .wx-c svg { width: 15px; height: 15px; color: var(--muted); }
 .wx-c b { font-variant-numeric: tabular-nums; font-size: .95em; white-space: nowrap; line-height: 1.1; }
@@ -338,13 +342,16 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .wx-c.hi-wind svg, .wx-c.hi-wind b { color: var(--tangerine); }
 .wx-c.hi-wind.gale { background: var(--warn-soft); border-radius: 8px; padding: 0 4px; }
 .wx-c.hi-wind.gale svg, .wx-c.hi-wind.gale b { color: var(--warn); }
-.wx-parts { display: flex; gap: 5px; padding-left: 8px; border-left: 1px solid var(--line); margin-left: auto; }
+.wx-parts { display: flex; gap: 3px; padding-left: 6px; border-left: 1px solid var(--line); margin-left: auto; }
+.wx-parts .wx { width: 17px; height: 17px; }
+.wx-strip .wx-twc { flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; color: var(--sea); text-decoration: none; }
+.wx-strip .wx-twc svg { width: 18px; height: 18px; }
+.wx-c + .wx-twc, .wx-tag + .wx-twc { margin-left: auto; }
 .wx-parts span { display: grid; justify-items: center; gap: 1px; }
 .wx-parts .wx { width: 19px; height: 19px; }
 .wx-parts small { font-size: .62em; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
 .wx-tag { font-size: .66em; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
 .wx-meta { font-size: .74em; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; border-top: 1px solid var(--line); margin-top: 7px; padding-top: 5px; }
-.wx-meta .wx-twc { margin-left: auto; font-weight: 700; color: var(--sea); text-decoration: none; white-space: nowrap; padding: 4px 0; }
 .wx-legend { font-size: .78em; color: var(--muted); padding: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .wx-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .wx-legend svg { width: 14px; height: 14px; }
@@ -619,7 +626,8 @@ const WXI = {
   thermo: '<path d="M10 14.5V5a2 2 0 014 0v9.5a4 4 0 11-4 0z"/><path d="M12 9v7"/>',
   feels: '<circle cx="12" cy="4.5" r="2"/><path d="M12 7.5v7m0 0l-3 6.5m3-6.5l3 6.5M7.5 11h9"/>',
   drop: '<path d="M12 3s6 6.6 6 11a6 6 0 01-12 0c0-4.4 6-11 6-11z"/>',
-  wind: '<path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7"/>'
+  wind: '<path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7"/>',
+  twc: '<path d="M6.5 20h7.5a3.5 3.5 0 00.4-6.98A4.6 4.6 0 005.6 13.6 3.2 3.2 0 006.5 20z"/><path d="M15 3h6v6M21 3l-6.5 6.5"/>'
 };
 const wxi = (n) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + WXI[n] + '</svg>';
 
@@ -776,10 +784,11 @@ function wxStrip(d) {
       : '<span>' + (lead > 7 ? 'Early forecast · may change' : 'Forecast') + (S.weather.at ? ' · updated ' + ago(S.weather.at) : '') + '</span>');
   const legend = S.wxLegend ? '<div class="wx-legend">' +
     '<span>' + wxi('thermo') + 'Temperature</span><span>' + wxi('feels') + 'Feels like</span><span>' + wxi('drop') + (w.kind === 't' ? 'Rainy days' : 'Rain chance') + '</span>' +
-    '<span>' + wxi('wind') + 'Wind km/h</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div>' : '';
+    '<span>' + wxi('wind') + 'Wind km/h</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div><div class="wx-meta">' + meta + '</div>' : '';
   return '<div class="wx-wrap' + (S.wxPop ? ' pop' : '') + '"><div class="wx-card' + (w.kind === 't' ? ' typ' : '') + '">' +
-    '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for legend') + '">' + cells + '</div>' +
-    legend + '<div class="wx-meta">' + meta + (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener">The Weather Channel ↗</a>' : '') + '</div></div></div>';
+    '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for details') + '">' + cells +
+    (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener" title="The Weather Channel" aria-label="Open The Weather Channel forecast">' + wxi('twc') + '</a>' : '') + '</div>' +
+    legend + '</div></div>';
 }
 function wxStop(e) {
   const h = wxAt(e);
