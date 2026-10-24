@@ -634,7 +634,15 @@ function dayPoint(d) {
   return { lat: best.lat, lng: best.lng };
 }
 function wxTz() { return encodeURIComponent(((S.data && S.data.trip) || {}).timezone || 'Asia/Seoul'); }
-async function wxGet(url) { const r = await fetch(url); if (!r.ok) throw new Error('weather ' + r.status); const j = await r.json(); return Array.isArray(j) ? j : [j]; }
+// Open-Meteo refuses too many requests at once (429), so requests go one at a time and a 429 is retried after a pause.
+async function wxGet(url) {
+  for (let i = 0; ; i++) {
+    const r = await fetch(url);
+    if (r.ok) { const j = await r.json(); return Array.isArray(j) ? j : [j]; }
+    if (r.status !== 429 || i >= 3) throw new Error('weather ' + r.status);
+    await new Promise((ok) => setTimeout(ok, 1500 * (i + 1)));
+  }
+}
 let wxBusy = false;
 async function loadWeather(force) {
   if (!S.days.length || wxBusy) return;
@@ -677,11 +685,15 @@ async function loadWeather(force) {
       if (keys.length && (!W.typAt || n - W.typAt > WX_TYP_TTL || W.typSig !== sig)) {
         const ll = keys.map((k) => k.split(',')), lo = tDays[0], hi = tDays[tDays.length - 1];
         const shiftY = (d, k) => (+d.slice(0, 4) - k) + d.slice(4);
-        const years = await Promise.all(Array.from({ length: WX_YEARS }, (_, i) => i + 1).map((k) =>
-          wxGet('https://archive-api.open-meteo.com/v1/archive?latitude=' + ll.map((x) => x[0]).join(',') + '&longitude=' + ll.map((x) => x[1]).join(',') +
-            '&start_date=' + addDays(shiftY(lo, k), -3) + '&end_date=' + addDays(shiftY(hi, k), 3) +
-            '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=' + wxTz())
-            .then((arr) => ({ k, arr }))));
+        const years = [];
+        for (let k = 1; k <= WX_YEARS; k++) { // one year at a time (the service limits parallel requests)
+          try {
+            years.push({ k, arr: await wxGet('https://archive-api.open-meteo.com/v1/archive?latitude=' + ll.map((x) => x[0]).join(',') + '&longitude=' + ll.map((x) => x[1]).join(',') +
+              '&start_date=' + addDays(shiftY(lo, k), -3) + '&end_date=' + addDays(shiftY(hi, k), 3) +
+              '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=' + wxTz()) });
+          } catch (e) { /* skip that year */ }
+        }
+        if (years.length < 5) throw new Error('not enough past years');
         const typ = {}, avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
         tDays.forEach((d) => {
           const li = keys.indexOf(dk[d]); if (li < 0) return;
