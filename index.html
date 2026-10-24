@@ -407,6 +407,40 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
   .day.pop[aria-pressed="true"] { animation: daypop .45s cubic-bezier(.3, 1.6, .5, 1), dayglow 2.2s .45s ease-in-out infinite alternate; }
   @keyframes daypop { from { transform: translateY(0) scale(.9); } }
 }
+
+/* ---------- v10e: weather card in two rows: what the day is like, then four colour-coded tiles ---------- */
+.wx-strip { display: grid; gap: 7px; }
+.wx-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wx-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.wx-name b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-top .wx-parts { margin-left: auto; }
+.wx-top .wx-twc { margin-left: 0; }
+.wx-name + .wx-twc { margin-left: auto; }
+.wx-tiles { display: flex; gap: 6px; }
+.wx-t { flex: 1 1 0; min-width: max-content; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 7px; border-radius: 10px; background: var(--surface-2); }
+.wx-t svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.wx-t b { font-variant-numeric: tabular-nums; font-size: .92em; white-space: nowrap; }
+.wx-t b small { font-weight: 400; font-size: .72em; color: var(--muted); margin-left: 2px; }
+.t-temp { background: var(--food-bg); } .t-temp svg { color: var(--food); }
+.t-feel { background: var(--att-bg); } .t-feel svg { color: var(--att); }
+.t-rain { background: var(--act-bg); } .t-rain svg { color: var(--act); }
+.t-rain.hi { background: var(--rain); } .t-rain.hi svg, .t-rain.hi b { color: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-rain.hi svg, :root:not([data-theme="light"]) .t-rain.hi b { color: #0B1413; } }
+:root[data-theme="dark"] .t-rain.hi svg, :root[data-theme="dark"] .t-rain.hi b { color: #0B1413; }
+.t-wind { background: var(--nat-bg); } .t-wind svg { color: var(--nat); }
+.t-wind.windy { background: var(--tangerine-soft); } .t-wind.windy svg { color: var(--tangerine); }
+.t-wind.gale { background: var(--warn-soft); box-shadow: inset 0 0 0 1.5px var(--warn); } .t-wind.gale svg, .t-wind.gale b { color: var(--warn); }
+.wx-card.typ .wx-t, .wx-card.typ .wx-main { opacity: .7; }
+
+/* ---------- v10f: one row of colour-coded tiles (icon over value) + AM/PM/EVE + Weather Channel ---------- */
+.wx-strip { display: block; }
+.wx-row { display: flex; align-items: stretch; gap: 5px; }
+.wx-row .wx-t { flex: 1 1 auto; min-width: 0; flex-direction: column; gap: 2px; padding: 5px 4px; }
+.wx-row .wx-t svg { width: 15px; height: 15px; }
+.wx-row .wx-t b { font-size: .9em; line-height: 1.1; }
+.wx-row .wx-parts { align-self: center; margin-left: 2px; }
+.wx-row .wx-tag { align-self: center; margin-left: 2px; }
+.wx-row .wx-twc { align-self: center; margin-left: 0; }
 </style>
 </head>
 <body>
@@ -795,24 +829,25 @@ function wxStrip(d) {
   const lead = Math.round((toMs(d, '12:00') - toMs(localParts(now()).date, '12:00')) / 864e5);
   const windy = w.wind >= 30 || w.gust >= 50, gale = w.wind >= 45 || w.gust >= 70;
   const name = WX_NAME[wxClass(w.c)];
-  const cells = '<span class="wx-main">' + wxIcon(w.c, '', name) + '</span>' +
-    '<span class="wx-c" title="Temperature">' + wxi('thermo') + '<b>' + range(w.lo, w.hi) + '</b></span>' +
-    '<span class="wx-c" title="Feels like">' + wxi('feels') + '<b>' + range(w.alo, w.ahi) + '</b></span>' +
-    (w.rain != null ? '<span class="wx-c' + (w.rain >= 50 ? ' hi-rain' : '') + '" title="' + (w.kind === 't' ? 'Rainy days in past years' : 'Chance of rain') + '">' + wxi('drop') + '<b>' + Math.round(w.rain) + '%</b></span>' : '') +
-    (w.wind != null ? '<span class="wx-c' + (windy ? ' hi-wind' : '') + (gale ? ' gale' : '') + '" title="Wind (km/h)' + (w.gust != null ? ', gusts ' + Math.round(w.gust) : '') + '">' + wxi('wind') + '<b>' + Math.round(w.wind) + '</b></span>' : '') +
-    (w.parts && w.parts.some((x) => x != null) ? '<span class="wx-parts">' + ['AM', 'PM', 'EVE'].map((l, i) => '<span title="' + (WMO(w.parts[i]) || '–') + '">' +
-      (w.parts[i] != null ? wxIcon(w.parts[i]) : '<svg class="wx" viewBox="0 0 24 24"></svg>') + '<small>' + l + '</small></span>').join('') + '</span>' : '') +
-    (w.kind === 't' ? '<span class="wx-tag">Typical</span>' : '');
   const twc = twcLink(w);
+  const parts = w.parts && w.parts.some((x) => x != null) ? '<span class="wx-parts">' + ['AM', 'PM', 'EVE'].map((l, i) => '<span title="' + (WMO(w.parts[i]) || '–') + '">' +
+    (w.parts[i] != null ? wxIcon(w.parts[i]) : '<svg class="wx" viewBox="0 0 24 24"></svg>') + '<small>' + l + '</small></span>').join('') + '</span>' : '';
+  const tile = (cls, ic, val, title) => '<span class="wx-t ' + cls + '" title="' + title + '">' + wxi(ic) + '<b>' + val + '</b></span>';
+  const row = '<div class="wx-row">' +
+    tile('t-temp', 'thermo', range(w.lo, w.hi), 'Temperature') +
+    tile('t-feel', 'feels', range(w.alo, w.ahi), 'Feels like') +
+    (w.rain != null ? tile('t-rain' + (w.rain >= 50 ? ' hi' : ''), 'drop', Math.round(w.rain) + '%', w.kind === 't' ? 'Rainy days in past years' : 'Chance of rain') : '') +
+    (w.wind != null ? tile('t-wind' + (windy ? ' windy' : '') + (gale ? ' gale' : ''), 'wind', Math.round(w.wind), 'Wind ' + Math.round(w.wind) + ' km/h' + (w.gust != null ? ', gusts ' + Math.round(w.gust) : '')) : '') +
+    (parts || (w.kind === 't' ? '<span class="wx-tag">Typical</span>' : '')) +
+    (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener" title="The Weather Channel" aria-label="Open The Weather Channel forecast">' + wxi('twc') + '</a>' : '') + '</div>';
   const meta = (CONFIG.wxSample ? '<span><b>Sample weather – preview only</b></span>' : '') +
     (w.kind === 't' ? '<span>Typical for this date · avg ' + esc(S.weather.typYears || '') + ' · forecast from ' + dayLabel(addDays(d, -15)) + '</span>'
       : '<span>' + (lead > 7 ? 'Early forecast · may change' : 'Forecast') + (S.weather.at ? ' · updated ' + ago(S.weather.at) : '') + '</span>');
-  const legend = S.wxLegend ? '<div class="wx-legend">' +
+  const legend = S.wxLegend ? '<div class="wx-legend"><span><b>' + esc(name) + '</b></span>' +
     '<span>' + wxi('thermo') + 'Temperature</span><span>' + wxi('feels') + 'Feels like</span><span>' + wxi('drop') + (w.kind === 't' ? 'Rainy days' : 'Rain chance') + '</span>' +
     '<span>' + wxi('wind') + 'Wind km/h</span>' + (w.parts ? '<span>AM 6–11 · PM 12–17 · EVE 18–22</span>' : '') + '</div><div class="wx-meta">' + meta + '</div>' : '';
   return '<div class="wx-wrap' + (S.wxPop ? ' pop' : '') + '"><div class="wx-card' + (w.kind === 't' ? ' typ' : '') + '">' +
-    '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for details') + '">' + cells +
-    (twc ? '<a class="wx-twc" href="' + esc(twc) + '" target="_blank" rel="noopener" title="The Weather Channel" aria-label="Open The Weather Channel forecast">' + wxi('twc') + '</a>' : '') + '</div>' +
+    '<div class="wx-strip" id="wxs" role="button" tabindex="0" aria-label="' + esc(name + ', ' + range(w.lo, w.hi) + ' C, feels like ' + range(w.alo, w.ahi) + '. Tap for details') + '">' + row + '</div>' +
     legend + '</div></div>';
 }
 function wxStop(e) {
