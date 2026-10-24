@@ -382,6 +382,31 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
   .day[aria-pressed="true"] .wx .w-fog, .wx-main .wx .w-fog { animation: wxdrift 2s ease-in-out infinite alternate; }
   .day[aria-pressed="true"] .wx .w-fog.k2, .wx-main .wx .w-fog.k2 { animation-direction: alternate-reverse; }
 }
+
+/* ---------- v10d: selected day = lifted card with a glowing, slowly turning ring (no black fill) ---------- */
+@property --ring { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@property --glint { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.days { padding: 9px 16px 12px; }
+.day { position: relative; transition: transform .25s cubic-bezier(.3, 1.5, .5, 1); }
+.day[aria-pressed="true"] { background: var(--surface); color: var(--ink); border-color: transparent; transform: translateY(-2px) scale(1.05); z-index: 1;
+  box-shadow: 0 0 0 1px rgba(232, 118, 26, .25), 0 6px 14px -4px rgba(232, 118, 26, .55); --cloud-bg: var(--surface); }
+/* ring = colour band + a bright glint layered on top that travels round it */
+.day[aria-pressed="true"]::before { content: ''; position: absolute; inset: -2.5px; border-radius: 14.5px; padding: 2.5px; pointer-events: none;
+  background: conic-gradient(from var(--glint), transparent 0 78%, rgba(255, 246, 214, .55) 86%, #fff 90%, rgba(255, 246, 214, .55) 94%, transparent 100%),
+    conic-gradient(from var(--ring), #E8761A, #F2B705, #3FB3A9, #E8761A);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.day[aria-pressed="true"] small { color: var(--tangerine); opacity: 1; font-weight: 700; }
+.day[aria-pressed="true"] .wx { color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .day[aria-pressed="true"]::before { animation: dayring 4s linear infinite, dayglint 1.8s cubic-bezier(.45, .05, .55, .95) infinite; }
+  @keyframes dayring { to { --ring: 360deg; } }
+  @keyframes dayglint { to { --glint: 360deg; } }
+  .day[aria-pressed="true"] { animation: dayglow 2.2s ease-in-out infinite alternate; }
+  @keyframes dayglow { from { box-shadow: 0 0 0 1px rgba(232, 118, 26, .2), 0 4px 10px -4px rgba(232, 118, 26, .45); }
+    to { box-shadow: 0 0 0 1px rgba(232, 118, 26, .35), 0 0 16px 1px rgba(242, 183, 5, .5); } }
+  .day.pop[aria-pressed="true"] { animation: daypop .45s cubic-bezier(.3, 1.6, .5, 1), dayglow 2.2s .45s ease-in-out infinite alternate; }
+  @keyframes daypop { from { transform: translateY(0) scale(.9); } }
+}
 </style>
 </head>
 <body>
