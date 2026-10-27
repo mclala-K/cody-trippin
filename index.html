@@ -477,6 +477,16 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .item.open::before { animation: dayring 4s linear infinite, dayglint 1.8s cubic-bezier(.45, .05, .55, .95) infinite; }
 }
+
+/* ---------- v11: Activities in Bookings ---------- */
+.sub-h { display: flex; justify-content: space-between; gap: 8px; padding: 7px 12px 5px; border-top: 1px solid var(--line);
+  background: var(--surface-2); font-size: .74em; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); }
+.sub-h .num { letter-spacing: 0; text-transform: none; font-weight: 700; }
+.bk-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .8em; font-weight: 800; letter-spacing: .04em; line-height: 1.5; }
+.bk-badge.todo { background: var(--tangerine); color: #fff; }
+.bk-badge.todo.soft { background: transparent; color: var(--tangerine); box-shadow: inset 0 0 0 1.5px var(--tangerine); }
+.bk-badge.ok { background: var(--sea-soft); color: var(--sea); }
+.bk-badge svg { width: 13px; height: 13px; }
 </style>
 </head>
 <body>
@@ -517,6 +527,7 @@ const P = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.01"/>',
   refresh: '<path d="M20 12a8 8 0 11-3-6.2M20 4v5h-5"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V5a1 1 0 011-1h11"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
@@ -604,7 +615,9 @@ function build(data) {
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
       notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '' });
   });
+  const linked = new Set((data.itinerary || []).map((r) => String(r.bookingId || '').trim()).filter(Boolean));
   (data.bookings || []).forEach((b) => {
+    if (linked.has(String(b.id))) return; // shown by its itinerary row instead
     const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
     const base = { bookingId: b.id, who: 'All', status: 'Booked', address: b.address || '', lat: num(b.lat), lng: num(b.lng),
       nav: b.naverLink || '', photos: photoList(b), phone: b.phone || '', notes: b.remarks || '' };
@@ -1008,8 +1021,8 @@ function detail(e) {
   const wxs = wxStop(e); if (wxs) kv.push(['Weather', wxs]);
   if (e.hours) kv.push(['Hours', esc(e.hours)]);
   if (e.address) kv.push(['Address', esc(e.address)]);
-  if (b) kv.push(['Booking', '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>']);
-  if (b && b.amount) kv.push(['Payment', esc(b.paid) + ' · ' + esc(b.amount)]);
+  if (b) kv.push(['Booking', b.refNo ? '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>' : bkBadge(b)]);
+  if (b && b.amount) kv.push([b.paid ? 'Payment' : 'Price', [b.paid, b.amount].filter(Boolean).map(esc).join(' · ')]);
   const photos = e.photos && e.photos.length
     ? '<div class="gallery">' + e.photos.map((u) => '<img src="' + esc(u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer">').join('') + '</div>'
     : '';
@@ -1019,14 +1032,36 @@ function detail(e) {
     '<div class="actions">' + navBtn(e) + callBtn(e.phone) + pdfBtn(b) + '</div></div>';
 }
 
+// Booking need from the sheet's "Booking need" column: 'must' | 'better' | ''
+function needOf(b) {
+  const v = String(b.bookingNeed || '').toLowerCase();
+  return /must/.test(v) ? 'must' : /better|recommend|optional/.test(v) ? 'better' : '';
+}
+function bkBadge(b) {
+  if (b.refNo) return '<span class="bk-badge ok">' + icon('check') + 'Booked</span>';
+  return '<span class="bk-badge todo' + (needOf(b) === 'better' ? ' soft' : '') + '">TO BOOK</span>';
+}
 function bookingsView() {
-  const groups = [['Flight', 'Flights'], ['Hotel', 'Stays'], ['Car', 'Car rental'], ['Activity', 'Activities']];
+  const groups = [['Activity', 'Activities'], ['Flight', 'Flights'], ['Hotel', 'Stays'], ['Car', 'Car rental']];
   const all = S.data.bookings || [];
+  const known = ['Flight', 'Hotel', 'Car'];
   return '<main>' + groups.map(([cat, name]) => {
-    const items = all.filter((b) => (b.category || 'Activity') === cat).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+    const items = all.filter((b) => (cat === 'Activity' ? !known.includes(b.category) : b.category === cat))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
     if (!items.length) return '';
+    let body = items.map((b) => bookingHTML(b, cat)).join('');
+    if (cat === 'Activity') {
+      const subs = [['must', 'Must book'], ['better', 'Better to book'], ['', 'Other']];
+      body = subs.map(([k, label]) => {
+        const xs = items.filter((b) => needOf(b) === k);
+        if (!xs.length) return '';
+        const todo = xs.filter((b) => !b.refNo).length;
+        return '<div class="sub-h"><span>' + label + '</span><span class="num">' + (todo ? todo + ' to book' : 'all booked') + '</span></div>' +
+          xs.map((b) => bookingHTML(b, cat)).join('');
+      }).join('');
+    }
     return '<section class="cat"><header class="cat-h">' + icon(cat) + '<h2>' + name + '</h2><span class="count">' + items.length + '</span></header>' +
-      items.map((b) => bookingHTML(b, cat)).join('') + '</section>';
+      body + '</section>';
   }).join('') + '</main>';
 }
 function bookingHTML(b, cat) {
@@ -1043,7 +1078,8 @@ function bookingHTML(b, cat) {
   return '<article class="bk">' +
     (p ? '<div class="date"><small>' + p.w + '</small><b class="num">' + p.d + '</b><small>' + p.mon + '</small></div>' : '<div></div>') +
     '<div class="bk-main"><h3>' + esc(b.title) + '</h3><div class="when num">' + when + '</div>' +
-    '<div class="meta"><button class="ref mono" data-copy="' + esc(b.refNo) + '" aria-label="Copy booking number">' + esc(b.refNo) + icon('copy') + '</button>' + pay + '</div>' +
+    '<div class="meta">' + (b.refNo ? '<button class="ref mono" data-copy="' + esc(b.refNo) + '" aria-label="Copy booking number">' + esc(b.refNo) + icon('copy') + '</button>' : '') +
+      (needOf(b) ? bkBadge(b) : '') + pay + '</div>' +
     (b.remarks ? warnOrText(b.remarks) : '') +
     '<div class="actions">' + navBtn(ev) + callBtn(b.phone, true) + pdfBtn(b, true) + '</div></div></article>';
 }
