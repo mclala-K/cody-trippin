@@ -528,6 +528,7 @@ const P = {
   refresh: '<path d="M20 12a8 8 0 11-3-6.2M20 4v5h-5"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V5a1 1 0 011-1h11"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
@@ -613,7 +614,7 @@ function build(data) {
     ev.push({ key: 'i' + i, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
       label: r.timeLabel || '', who: r.who || 'All', area: r.area || '', address: r.address || '', lat: num(r.lat), lng: num(r.lng),
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
-      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '' });
+      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '', website: r.website || '' });
   });
   const linked = new Set((data.itinerary || []).map((r) => String(r.bookingId || '').trim()).filter(Boolean));
   (data.bookings || []).forEach((b) => {
@@ -689,6 +690,11 @@ function navBtn(e, label) {
 function callBtn(phone, iconOnly) {
   if (!phone) return '';
   return '<a class="btn small' + (iconOnly ? ' icon' : '') + '" href="tel:' + esc(String(phone).replace(/\s/g, '')) + '" aria-label="Call ' + esc(phone) + '">' + icon('phone') + (iconOnly ? '' : esc(phone)) + '</a>';
+}
+function webBtn(url) {
+  url = String(url || '').trim();
+  if (!/^https?:\/\//i.test(url)) return '';
+  return '<a class="btn small icon" href="' + esc(url) + '" target="_blank" rel="noopener" aria-label="Website">' + icon('web') + '</a>';
 }
 function pdfBtn(b, iconOnly) {
   if (!b || !b.bookingPdfLink) return '';
@@ -1029,7 +1035,7 @@ function detail(e) {
   return '<div class="detail">' + photos +
     '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' +
     (e.notes ? warnOrText(e.notes) : '') +
-    '<div class="actions">' + navBtn(e) + callBtn(e.phone) + pdfBtn(b) + '</div></div>';
+    '<div class="actions">' + navBtn(e) + callBtn(e.phone) + pdfBtn(b) + webBtn(e.website || (b && b.website)) + '</div></div>';
 }
 
 // Booking need from the sheet's "Booking need" column: 'must' | 'better' | ''
@@ -1081,7 +1087,7 @@ function bookingHTML(b, cat) {
     '<div class="meta">' + (b.refNo ? '<button class="ref mono" data-copy="' + esc(b.refNo) + '" aria-label="Copy booking number">' + esc(b.refNo) + icon('copy') + '</button>' : '') +
       (needOf(b) ? bkBadge(b) : '') + pay + '</div>' +
     (b.remarks ? warnOrText(b.remarks) : '') +
-    '<div class="actions">' + navBtn(ev) + callBtn(b.phone, true) + pdfBtn(b, true) + '</div></div></article>';
+    '<div class="actions">' + navBtn(ev) + callBtn(b.phone, true) + pdfBtn(b, true) + webBtn(b.website) + '</div></div></article>';
 }
 
 function listsView() {
