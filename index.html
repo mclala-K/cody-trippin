@@ -131,9 +131,16 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .chip.opt { background: var(--tangerine-soft); color: var(--warn); }
 .chip.who { background: transparent; border: 1px solid var(--line); }
 .detail { padding: 0 12px 14px 12px; display: grid; gap: 10px; }
-.gallery { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; }
-.gallery img { flex: 0 0 88%; border-radius: 10px; aspect-ratio: 16/10; object-fit: cover; scroll-snap-align: start; background: var(--surface-2); }
-.gallery img:only-child { flex-basis: 100%; }
+.carousel { position: relative; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.carousel .track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.carousel .track::-webkit-scrollbar { display: none; }
+.carousel .slide { flex: 0 0 100%; position: relative; aspect-ratio: 16/9; scroll-snap-align: start; scroll-snap-stop: always; }
+.carousel .slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.carousel .src { position: absolute; left: 6px; bottom: 6px; max-width: 68%; padding: 2px 7px; border-radius: 99px; background: rgba(0, 0, 0, .55); color: #fff;
+  font-size: .62em; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.carousel .dots { position: absolute; right: 8px; bottom: 9px; display: flex; gap: 4px; pointer-events: none; }
+.carousel .dots i { width: 5px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .55); box-shadow: 0 0 2px rgba(0, 0, 0, .4); transition: width .15s, background .15s; }
+.carousel .dots i.on { width: 14px; background: #fff; }
 .nophoto { border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: .85em; padding: 10px 12px; }
 .kv { display: grid; grid-template-columns: 76px 1fr; gap: 4px 10px; font-size: .92em; margin: 0; }
 .kv dt { color: var(--muted); }
@@ -652,11 +659,29 @@ function build(data) {
   S.days = days;
 }
 function photoList(r) {
-  return [r.photoUrl || r.photoLink, r.photo2, r.photo3].filter(Boolean).map((u) => {
-    const m = String(u).match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{20,})/);
-    return /(drive|docs)\.google\.com/.test(u) && m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w800' : u;
+  const cr = String(r.photoCredits || '').split('|');
+  return [r.photoUrl || r.photoLink, r.photo2, r.photo3, r.photo4, r.photo5].map((u, i) => ({ u, c: (cr[i] || '').trim() })).filter((p) => p.u).map((p) => {
+    const m = String(p.u).match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{20,})/);
+    return { u: /(drive|docs)\.google\.com/.test(p.u) && m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w800' : p.u, c: p.c };
   });
 }
+function dotsHtml(n) { return n > 1 ? '<div class="dots"><i class="on"></i>' + '<i></i>'.repeat(n - 1) + '</div>' : ''; }
+function carouselDots(track) {
+  const car = track.parentNode, d = car && car.querySelector('.dots');
+  if (!d) return;
+  const i = Math.round(track.scrollLeft / (track.clientWidth || 1));
+  Array.prototype.forEach.call(d.children, (el, k) => el.classList.toggle('on', k === i));
+}
+function photoFail(img) { // a photo that won't load disappears instead of showing a broken icon
+  const slide = img.parentNode, car = slide.parentNode.parentNode, track = slide.parentNode;
+  slide.remove();
+  const n = track.children.length;
+  if (!n) { car.remove(); return; }
+  const d = car.querySelector('.dots');
+  if (d) { d.outerHTML = dotsHtml(n); }
+  carouselDots(track);
+}
+document.addEventListener('scroll', (ev) => { const t = ev.target; if (t && t.classList && t.classList.contains('track')) carouselDots(t); }, true);
 function nowNext() {
   const n = now();
   const cur = S.events.filter((e) => live(e) && e.t0 <= n && n < e.t1).pop() || null;
@@ -1030,7 +1055,8 @@ function detail(e) {
   if (b) kv.push(['Booking', b.refNo ? '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>' : bkBadge(b)]);
   if (b && b.amount) kv.push([b.paid ? 'Payment' : 'Price', [b.paid, b.amount].filter(Boolean).map(esc).join(' · ')]);
   const photos = e.photos && e.photos.length
-    ? '<div class="gallery">' + e.photos.map((u) => '<img src="' + esc(u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer">').join('') + '</div>'
+    ? '<div class="carousel"><div class="track">' + e.photos.map((p) => '<div class="slide"><img src="' + esc(p.u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer" onerror="photoFail(this)">' +
+      (p.c ? '<span class="src">' + esc(p.c) + '</span>' : '') + '</div>').join('') + '</div>' + dotsHtml(e.photos.length) + '</div>'
     : '';
   return '<div class="detail">' + photos +
     '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' +
@@ -1187,11 +1213,13 @@ function render(keepScroll) {
   document.body.classList.remove('home');
   setBg(themeFor(S.data));
   const y = window.scrollY;
+  const slides = Array.prototype.map.call(document.querySelectorAll('.carousel .track'), (t) => Math.round(t.scrollLeft / (t.clientWidth || 1)));
   const views = { today: todayView, bookings: bookingsView, lists: listsView, info: infoView };
   document.getElementById('app').innerHTML = header() + (views[S.tab] || todayView)() + tabs();
   centerDay();
   bgHeader();
   S.wxPop = false;
+  document.querySelectorAll('.carousel .track').forEach((t, i) => { if (slides[i]) t.scrollLeft = slides[i] * t.clientWidth; carouselDots(t); });
   if (keepScroll) window.scrollTo(0, y);
 }
 function centerDay() {
