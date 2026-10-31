@@ -551,6 +551,47 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .detail .hl { margin: 0; display: flex; gap: 7px; align-items: flex-start; padding: 8px 10px; border-radius: 10px;
   background: var(--tile-warm); color: var(--ink); font-size: .92em; line-height: 1.42; }
 .detail .hl .hl-ic { flex: 0 0 auto; font-size: 1.02em; line-height: 1.38; }
+
+/* ---------- v16: per-traveller ticks ---------- */
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.item > .detail { grid-column: 1 / -1; }
+.item > .row { padding-right: 2px; }
+.tk { width: 46px; align-self: stretch; display: grid; place-items: center; border: 0; background: none; padding: 0 10px 0 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tk-c { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px var(--line); color: transparent; transition: background .2s, box-shadow .2s, color .2s; }
+.tk-c svg { width: 15px; height: 15px; }
+.tk.done .tk-c { background: var(--sea); box-shadow: none; color: #fff; }
+.tk.skip .tk-c { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--muted); color: var(--muted); }
+@media (hover: hover) { .tk:not(.done):not(.skip):hover .tk-c { color: var(--line); } }
+.item.tk-skip .row .ti b { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .tk.pop .tk-c { animation: tkpop .42s cubic-bezier(.3, 1.7, .5, 1); }
+  @keyframes tkpop { from { transform: scale(.55); } }
+}
+/* who's ticking: avatar in the header (orange dot = ticks waiting for signal) */
+.icon-btn.me { padding: 0; min-width: 40px; position: relative; }
+.me-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--me, var(--muted)); color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .02em; line-height: 1; }
+.me-av.none { background: var(--surface-2); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); font-size: .9rem; }
+.icon-btn.me.pending::after, .pick-q .pdot { content: ''; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--tangerine); box-shadow: 0 0 0 2px var(--surface); }
+.pick-q .pdot { position: static; display: inline-block; margin-right: 6px; vertical-align: 0; box-shadow: none; }
+/* picker: bottom sheet */
+.pick { position: fixed; inset: 0; z-index: 40; }
+.pick-scrim { position: absolute; inset: 0; background: rgba(10, 12, 12, .45); opacity: 0; transition: opacity .22s ease; }
+.pick-card:focus { outline: none; }
+.pick-card { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%); transition: transform .3s cubic-bezier(.22, 1, .36, 1); box-shadow: 0 -8px 30px rgba(0, 0, 0, .18); }
+.pick.in .pick-scrim { opacity: 1; }
+.pick.in .pick-card { transform: none; }
+.pick h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.3em; }
+.pick p { margin: 3px 0 14px; color: var(--muted); font-size: .9em; }
+.pick .pick-q { margin: 14px 0 0; }
+.pick-x { position: absolute; right: 12px; top: 12px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.pick-x svg { width: 18px; height: 18px; }
+.pick-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; }
+.pick-p { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; }
+.pick-p .me-av { width: 46px; height: 46px; font-size: 1rem; }
+.pick-p b { font-size: .82em; line-height: 1.15; text-align: center; }
+.pick-p.on { border-color: var(--tangerine); box-shadow: 0 0 0 1.5px var(--tangerine); }
+@media (prefers-reduced-motion: reduce) { .pick-scrim, .pick-card { transition: none; } }
 </style>
 </head>
 <body>
@@ -675,7 +716,7 @@ function build(data) {
   const num = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
   (data.itinerary || []).forEach((r, i) => {
     if (!r.date || !r.title) return;
-    ev.push({ key: 'i' + i, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
+    ev.push({ key: 'i' + i, uid: r.id ? String(r.id) : 'x:' + r.date + '|' + r.title, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
       label: r.timeLabel || '', who: r.who || 'All', area: r.area || '', address: r.address || '', lat: num(r.lat), lng: num(r.lng),
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
       notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '', website: r.website || '', highlight: r.highlight || '' });
@@ -686,7 +727,7 @@ function build(data) {
     const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
     const base = { bookingId: b.id, who: 'All', status: 'Booked', address: b.address || '', lat: num(b.lat), lng: num(b.lng),
       nav: b.naverLink || '', photos: photoList(b), phone: b.phone || '', notes: b.remarks || '', highlight: b.highlight || '' };
-    const add = (o) => ev.push(Object.assign({}, base, o));
+    const add = (o) => ev.push(Object.assign({ uid: o.key }, base, o));
     if (b.category === 'Flight') {
       add({ key: b.id, type: 'Flight', title: b.title, date: sd, start: st, end: ed === sd ? et : '', sub: (b.fromDepTerminal || '') + (b.toArrTerminal ? ' → ' + b.toArrTerminal : '') + ' · lands ' + et });
     } else if (b.category === 'Hotel') {
@@ -1406,7 +1447,7 @@ function header() {
   } else sub = '<span class="num">' + esc(rangeLabel(t.start, t.end)) + '</span>';
   let h = '<header class="top" id="top"><div class="top-row"><a class="icon-btn" href="#" aria-label="All trips">' + icon('back') + '</a>' +
     '<h1>' + esc(t.destination || t.tripName || 'Trip') + '</h1>' +
-    '<button class="icon-btn" id="big" aria-pressed="' + document.documentElement.classList.contains('big') + '" title="Larger text">Aa</button>' +
+    meBtn() + '<button class="icon-btn" id="big" aria-pressed="' + document.documentElement.classList.contains('big') + '" title="Larger text">Aa</button>' +
     '<button class="icon-btn" id="refresh" aria-label="Get latest">' + icon('refresh') + '</button></div>' +
     '<div class="sub num" id="sub">' + sub + '</div>';
   if (S.tab === 'today') {
@@ -1444,13 +1485,13 @@ function itemHTML(e, cur, next, n) {
   const chips = (isNow ? '<span class="chip now">Now</span>' : '') +
     (isNext && !isNow ? '<span class="chip next">Next · ' + esc(dur((e.t0 - n) / 60000)) + '</span>' : '') +
     (e.who && e.who !== 'All' ? '<span class="chip who">' + esc(e.who) + '</span>' : '');
-  return '<div class="item' + (e.status === 'Optional' || e.status === 'Alternative' ? ' alt' : '') + (past ? ' past' : '') + (isNow ? ' now' : '') + (open ? ' open' : '') + '" data-key="' + e.key + '">' +
+  return '<div class="item' + (e.status === 'Optional' || e.status === 'Alternative' ? ' alt' : '') + (past ? ' past' : '') + (isNow ? ' now' : '') + (open ? ' open' : '') + tickCls(e) + '" data-key="' + e.key + '">' +
     '<button class="row" data-open="' + e.key + '" aria-expanded="' + open + '">' +
     '<span class="t">' + (isAlt ? (e.status === 'Alternative' ? '<span class="tag">ALT</span>' : e.status === 'Optional' ? '<span class="tag">OPT</span>' : '') : esc(e.start || '–')) + (lab ? '<small>' + esc(lab) + '</small>' : '') + '</span>' +
     '<span class="ic t-' + esc(String(e.type || '').toLowerCase()) + '">' + icon(e.type) + '</span>' +
     '<span class="ti"><b>' + esc(e.title) + '</b><span>' + esc(e.sub || e.area || '') + (e.driveMin ? ' · ' + e.driveMin + ' min drive' : '') + '</span>' +
     (chips ? '<span class="chips" style="justify-content:flex-start;margin-top:4px">' + chips + '</span>' : '') + '</span>' +
-    icon('chev', 'chev') + '</button>' + (open ? detail(e) : '') + '</div>';
+    icon('chev', 'chev') + '</button>' + tickBtn(e) + (open ? detail(e) : '') + '</div>';
 }
 function detail(e) {
   const b = e.bookingId && S.bookings[e.bookingId];
@@ -1728,10 +1769,12 @@ document.addEventListener('click', async (ev) => {
     return;
   }
   if (!ev.target.closest('.wx-twc') && ev.target.closest('#wxs')) { S.wxLegend = !S.wxLegend; render(true); return; }
-  const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],#big,#refresh');
+  const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],[data-tk],#me,#big,#refresh');
   if (!el) return;
   if (el.dataset.tab) { S.tab = el.dataset.tab; store.set('tab', S.tab); render(); window.scrollTo(0, 0); }
   else if (el.dataset.day) { S.day = el.dataset.day; S.open.clear(); S.wxPop = true; render(); window.scrollTo(0, 0); }
+  else if (el.dataset.tk) { tapTick(el.dataset.tk); }
+  else if (el.id === 'me') { openPicker(); }
   else if (el.dataset.open) { toggleItem(el.dataset.open); }
   else if (el.dataset.copy != null) {
     ev.stopPropagation();
@@ -1747,6 +1790,156 @@ document.addEventListener('change', (ev) => {
   }
 });
 
+/* ---------- v16: per-traveller ticks ----------
+   Each traveller ticks their own list: blank -> Done -> Skipped -> blank.
+   Saved on the phone at once (ct:prog:<trip>:<who>), queued (ct:q:<trip>) and sent to the sheet's
+   Progress tab in the background; no signal = it waits and sends later. Newest tap wins. */
+const TK_NEXT = { '': 'done', done: 'skip', skip: '' };
+const TK_SAY = { done: 'Done', skip: 'Skipped', '': 'Cleared' };
+const ME_COL = ['#E8761A', '#13706A', '#5B45A8', '#1F5FA8', '#A3346C', '#2E7D45'];
+const travellers = () => String(((S.data && S.data.trip) || {}).travellers || '').split(/\s*(?:,|·|&|\/|\band\b)\s*/).map((x) => x.trim()).filter(Boolean);
+const initials = (n) => { const w = String(n).trim().split(/\s+/); return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : String(n).slice(0, 2)).toUpperCase(); };
+const meCol = (n) => ME_COL[Math.max(0, travellers().indexOf(n)) % ME_COL.length];
+const progKey = () => 'prog:' + S.tripId + ':' + S.me;
+const tkOf = (e) => (S.me && e.uid && S.prog[e.uid] && S.prog[e.uid].s) || '';
+function loadMe(id) {
+  S.me = store.get('me:' + id, null);
+  S.prog = S.me ? store.get('prog:' + id + ':' + S.me, {}) : {};
+}
+function tickCls(e) { const t = tkOf(e); return t === 'done' ? ' tk-done' : t === 'skip' ? ' tk-skip' : ''; }
+function tickBtn(e) {
+  const t = tkOf(e);
+  const lab = t === 'done' ? 'Done' : t === 'skip' ? 'Skipped' : 'Not done yet';
+  return '<button class="tk' + (t ? ' ' + t : '') + '" data-tk="' + esc(e.key) + '" aria-label="' + esc(e.title + ': ' + lab + '. Tap to change') + '">' +
+    '<span class="tk-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    (t === 'skip' ? '<path d="M7 12h10"/>' : '<path d="M5.5 12.5l4 4 9-9.5"/>') + '</svg></span></button>';
+}
+function meBtn() {
+  if (!travellers().length) return '';
+  const pend = store.get('q:' + S.tripId, []).length;
+  return '<button class="icon-btn me' + (pend ? ' pending' : '') + '" id="me" aria-label="' + esc(S.me ? 'Ticking as ' + S.me + '. Change' : 'Who are you?') + '">' +
+    (S.me ? '<span class="me-av" style="--me:' + meCol(S.me) + '">' + esc(initials(S.me)) + '</span>' : '<span class="me-av none">?</span>') + '</button>';
+}
+function updDot() { const b = document.getElementById('me'); if (b) b.classList.toggle('pending', store.get('q:' + S.tripId, []).length > 0); }
+function tapTick(key) {
+  const e = S.events.find((x) => x.key === key);
+  if (!e) return;
+  if (!S.me) { openPicker(key); return; }
+  const s = TK_NEXT[tkOf(e)], at = Date.now();
+  S.prog[e.uid] = { s, at };
+  store.set(progKey(), S.prog);
+  const q = store.get('q:' + S.tripId, []).filter((o) => !(o.who === S.me && o.id === e.uid));
+  q.push({ who: S.me, id: e.uid, s, at, date: e.date, title: e.title });
+  store.set('q:' + S.tripId, q);
+  paintTick(key, true);
+  toast(TK_SAY[s]);
+  try { if (navigator.vibrate) navigator.vibrate(8); } catch (x) {}
+  flushTicks();
+}
+// update one row in place (no re-render, so an open item, photos and animations stay as they are)
+function paintTick(key, pop) {
+  const el = document.querySelector('.item[data-key="' + key + '"]'), e = S.events.find((x) => x.key === key);
+  if (!el || !e) return;
+  const t = tkOf(e);
+  el.classList.toggle('tk-done', t === 'done'); el.classList.toggle('tk-skip', t === 'skip');
+  const b = el.querySelector(':scope > .tk');
+  if (b) { b.outerHTML = tickBtn(e); if (pop && t) { const nb = el.querySelector(':scope > .tk'); nb && nb.classList.add('pop'); } }
+  updDot();
+}
+async function apiPost(body) { // text/plain body: no CORS pre-check, Apps Script reads e.postData.contents
+  const r = await fetch(CONFIG.api, { method: 'POST', body: JSON.stringify(body), redirect: 'follow' });
+  return r.json();
+}
+let tkBusy = false;
+async function flushTicks() {
+  const id = S.tripId, entry = id && myTrips()[id];
+  if (!entry) return;
+  if (tkBusy) { flushTicks.again = true; return; }
+  const q = store.get('q:' + id, []);
+  if (!q.length) { updDot(); return; }
+  tkBusy = true;
+  try {
+    for (const who of [...new Set(q.map((o) => o.who))]) {
+      const ops = q.filter((o) => o.who === who);
+      const j = await apiPost({ action: 'tick', trip: id, code: entry.code, who, ops });
+      const sent = (o) => ops.some((x) => x.id === o.id && x.at === o.at && x.who === o.who);
+      if (j && j.ok) {
+        store.set('q:' + id, store.get('q:' + id, []).filter((o) => !sent(o)));
+        if (who === S.me && S.tripId === id && j.ticks) mergeTicks(j.ticks);
+      } else if (j && (j.error === 'unknown_traveller' || j.error === 'unknown_trip')) {
+        store.set('q:' + id, store.get('q:' + id, []).filter((o) => !sent(o))); // name no longer on the trip: don't retry forever
+      } else break; // old backend / sheet busy: keep the queue, try again later
+    }
+  } catch (x) { /* no signal: keep the queue */ }
+  tkBusy = false;
+  updDot();
+  if (flushTicks.again) { flushTicks.again = false; return flushTicks(); } // taps made while sending
+  if (store.get('q:' + id, []).length && !flushTicks.t) flushTicks.t = setTimeout(() => { flushTicks.t = 0; flushTicks(); }, 60000);
+}
+// ticks made on this person's other phone come down from the sheet; anything still queued here wins
+function mergeTicks(server) {
+  const pend = new Set(store.get('q:' + S.tripId, []).filter((o) => o.who === S.me).map((o) => o.id));
+  const changed = [];
+  Object.entries(server).forEach(([k, v]) => {
+    if (pend.has(k)) return;
+    const l = S.prog[k];
+    if (!l || (l.at || 0) < (v.at || 0)) { S.prog[k] = v; changed.push(k); }
+  });
+  if (!changed.length) return;
+  store.set(progKey(), S.prog);
+  S.events.filter((e) => changed.includes(e.uid)).forEach((e) => paintTick(e.key));
+}
+async function syncTicks() {
+  await flushTicks();
+  const id = S.tripId, entry = id && myTrips()[id];
+  if (!S.me || !entry) return;
+  try { const j = await apiPost({ action: 'progress', trip: id, code: entry.code, who: S.me }); if (j && j.ok && j.ticks && S.tripId === id) mergeTicks(j.ticks); } catch (x) {}
+}
+function setMe(name) {
+  S.me = name; store.set('me:' + S.tripId, name);
+  S.prog = store.get(progKey(), {});
+  render(true);
+  syncTicks();
+}
+function askMeOnce() {
+  const t = travellers();
+  if (S.me || !t.length || store.get('askedMe:' + S.tripId, false)) return;
+  if (t.length === 1) { setMe(t[0]); return; }
+  store.set('askedMe:' + S.tripId, true);
+  setTimeout(() => openPicker(), 350);
+}
+function openPicker(thenTick) {
+  closePicker(true);
+  const t = travellers();
+  if (!t.length) return;
+  const pend = store.get('q:' + S.tripId, []).length;
+  const d = document.createElement('div');
+  d.className = 'pick'; d.id = 'pick';
+  d.innerHTML = '<div class="pick-scrim" data-pick-x></div><div class="pick-card" role="dialog" aria-modal="true" aria-labelledby="pick-h">' +
+    '<button class="pick-x" data-pick-x aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+    '<h2 id="pick-h">Who’s ticking?</h2><p>Your ticks are saved under your name.</p>' +
+    '<div class="pick-row">' + t.map((n) => '<button class="pick-p' + (n === S.me ? ' on' : '') + '" data-pick="' + esc(n) + '"><span class="me-av" style="--me:' + meCol(n) + '">' + esc(initials(n)) + '</span><b>' + esc(n) + '</b></button>').join('') + '</div>' +
+    (pend ? '<p class="pick-q"><span class="pdot"></span>' + pend + ' tick' + (pend > 1 ? 's' : '') + ' waiting for signal to reach the sheet</p>' : '') + '</div>';
+  d.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-pick],[data-pick-x]');
+    if (!b) return;
+    if (b.dataset.pick) { const was = S.me; closePicker(); if (b.dataset.pick !== was) setMe(b.dataset.pick); if (thenTick) tapTick(thenTick); }
+    else closePicker();
+  });
+  document.addEventListener('keydown', pickKey);
+  document.body.appendChild(d);
+  requestAnimationFrame(() => d.classList.add('in'));
+  d.querySelector('.pick-card').setAttribute('tabindex', '-1'); d.querySelector('.pick-card').focus({ preventScroll: true });
+}
+function pickKey(ev) { if (ev.key === 'Escape') closePicker(); }
+function closePicker(now) {
+  const d = document.getElementById('pick');
+  document.removeEventListener('keydown', pickKey);
+  if (!d) return;
+  if (now || calm()) { d.remove(); return; }
+  d.classList.remove('in'); setTimeout(() => d.remove(), 220);
+}
+
 /* ---------- loading ---------- */
 async function loadTrip(id, manual) {
   const entry = myTrips()[id];
@@ -1756,6 +1949,7 @@ async function loadTrip(id, manual) {
   if (fresh) {
     S.open.clear(); S.day = null; S.wxPop = true; S.tab = store.get('tab', 'today');
     S.weather = store.get('wx:' + id, {});
+    loadMe(id);
     const cached = store.get('data:' + id, null);
     if (cached) accept(cached);
     else document.getElementById('app').innerHTML = '<div class="gate"><p>Loading trip…</p></div>';
@@ -1765,7 +1959,7 @@ async function loadTrip(id, manual) {
     if (j.ok) {
       store.set('data:' + id, j);
       const t = myTrips(); if (t[id]) { t[id].summary = summaryFrom(id, j); saveTrips(t); }
-      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(manual); }
+      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(manual); syncTicks(); }
     } else if (j.error === 'bad_passcode') {
       const t = myTrips(); delete t[id]; saveTrips(t); store.set('data:' + id, null);
       location.hash = ''; homeView('The passcode for that trip has changed. Ask Cody for the new one.');
@@ -1776,6 +1970,7 @@ function accept(data, keepScroll) {
   S.data = data; build(data);
   if (!S.day || !S.days.includes(S.day)) pickDefaultDay();
   render(keepScroll);
+  askMeOnce();
 }
 function route() {
   const id = decodeURIComponent(location.hash.slice(1));
@@ -1794,6 +1989,7 @@ function boot() {
   if (store.get('big', false)) document.documentElement.classList.add('big');
   migrateOld();
   window.addEventListener('hashchange', route);
+  window.addEventListener('online', () => flushTicks());
   route();
   setInterval(() => { if (S.data && S.tab === 'today') render(true); }, 60000); // keep Now/Next current
   document.addEventListener('visibilitychange', () => { if (!document.hidden && S.tripId) loadTrip(S.tripId); });
