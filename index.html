@@ -114,7 +114,7 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .row .ti { min-width: 0; }
 .row .ti b { display: block; overflow-wrap: anywhere; line-height: 1.2; }
 .row .ti span { color: var(--muted); font-size: .85em; }
-.row .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .15s; }
+.row .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .38s cubic-bezier(.22, 1, .36, 1); }
 .item.open .row .chev { transform: rotate(180deg); }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .item.past .row { opacity: .45; }
@@ -214,7 +214,16 @@ main { padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); ga
 .gate input { font-size: 1.6rem; text-align: center; letter-spacing: .3em; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 99px; font-size: .9em; z-index: 9; max-width: calc(100% - 32px); }
 .toast a { color: inherit; font-weight: 700; text-decoration: underline; display: block; padding: 4px 2px; }
-@media (prefers-reduced-motion: no-preference) { .item.open .detail { animation: open .16s ease-out; } @keyframes open { from { opacity: .3; } } }
+/* v14: open/close motion is done in JS (growIn / shrinkOut); our own scroll holding replaces the browser's scroll anchoring */
+html { overflow-anchor: none; }
+.detail { align-content: start; } /* while its height animates, content stays packed at the top */
+/* expanded item: soft see-through wash in the ring colours (tangerine -> gold -> sea), fades in/out with the open state */
+:root { --open-wash: linear-gradient(150deg, rgba(232, 118, 26, .06), rgba(242, 183, 5, .04) 50%, rgba(63, 179, 169, .06)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --open-wash: linear-gradient(150deg, rgba(245, 154, 69, .08), rgba(242, 183, 5, .04) 50%, rgba(63, 179, 169, .08)); } }
+:root[data-theme="dark"] { --open-wash: linear-gradient(150deg, rgba(245, 154, 69, .08), rgba(242, 183, 5, .04) 50%, rgba(63, 179, 169, .08)); }
+.item { isolation: isolate; }
+.item::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--open-wash); opacity: 0; transition: opacity .3s ease; }
+.item.open::after { opacity: 1; transition-duration: .45s; }
 /* ---------- v8: icon comes alive while its row is expanded ----------
    .a-on = extra scene bits (shown only when open), .a-off = bits that hide when open,
    .m-* = moving parts. Motion only matches .item.open, so collapsing stops it.
@@ -482,7 +491,8 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .tl .item:last-child.open::before { border-radius: 12px 12px calc(var(--r) - 1px) calc(var(--r) - 1px); }
 .tl .item:only-child.open::before { border-radius: calc(var(--r) - 1px); }
 @media (prefers-reduced-motion: no-preference) {
-  .item.open::before { animation: dayring 4s linear infinite, dayglint 1.8s cubic-bezier(.45, .05, .55, .95) infinite; }
+  .item.open::before { animation: dayring 4s linear infinite, dayglint 1.8s cubic-bezier(.45, .05, .55, .95) infinite, ringin .45s ease-out; }
+  @keyframes ringin { from { opacity: 0; } }
 }
 
 /* ---------- v11: Activities in Bookings ---------- */
@@ -1637,18 +1647,69 @@ function toastLink(msg, href) {
   t.hidden = false;
   clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 8000);
 }
+/* ---------- v14: smooth expand / collapse ---------- */
+const EASE_OPEN = 'cubic-bezier(.22, 1, .36, 1)', EASE_CLOSE = 'cubic-bezier(.4, 0, .2, 1)', T_OPEN = 380, T_CLOSE = 280;
+const calm = () => !Element.prototype.animate || matchMedia('(prefers-reduced-motion: reduce)').matches;
+// details grow from `from` px (0, or wherever a half-closed copy was) to full height; parts fade in one after another
+function growIn(d, from) {
+  if (!d || calm()) return;
+  const h = d.offsetHeight, pb = getComputedStyle(d).paddingBottom;
+  d.style.overflow = 'hidden';
+  const a = d.animate([{ height: (from || 0) + 'px', paddingBottom: from ? pb : '0px' }, { height: h + 'px', paddingBottom: pb }], { duration: T_OPEN, easing: EASE_OPEN });
+  a.onfinish = a.oncancel = () => { d.style.overflow = ''; };
+  if (!from) [...d.children].forEach((c, i) => c.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 300, delay: 70 + i * 45, easing: EASE_OPEN, fill: 'backwards' }));
+}
+// details fold to 0 and fade, then are removed; returns how long that takes (0 = removed at once)
+function shrinkOut(d) {
+  if (!d) return 0;
+  d.classList.add('closing');
+  if (calm()) { d.remove(); return 0; }
+  const h = d.getBoundingClientRect().height, pb = getComputedStyle(d).paddingBottom;
+  d.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+  d.style.overflow = 'hidden'; d.style.pointerEvents = 'none';
+  const a = d.animate([{ height: h + 'px', paddingBottom: pb, opacity: 1 }, { height: '0px', paddingBottom: '0px', opacity: 0 }], { duration: T_CLOSE, easing: EASE_CLOSE, fill: 'forwards' });
+  a.onfinish = () => d.remove();
+  return T_CLOSE;
+}
+// glide the page so an item's top sits just under the sticky header (dates bar). The target is re-measured every
+// frame, so it stays right while another item above is folding away. Touching/scrolling cancels it (your finger wins).
+let glideId = 0;
+['touchstart', 'wheel', 'keydown'].forEach((t) => addEventListener(t, () => { glideId++; }, { passive: true }));
+function glideToTop(el) {
+  const gap = 8, id = ++glideId;
+  const target = () => { const top = document.getElementById('top'); return el.getBoundingClientRect().top - (top ? top.getBoundingClientRect().bottom : 0) - gap; };
+  if (calm()) { window.scrollBy(0, target()); return; }
+  const y0 = window.scrollY, dist = Math.abs(target()), dur = Math.min(650, 340 + dist * .25), t0 = performance.now();
+  (function step(now) {
+    if (id !== glideId || !el.isConnected) return;
+    const t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 3); // ease-out
+    // where the page should end up: minus whatever is still folding away above this item, so it doesn't overshoot
+    const folding = [...document.querySelectorAll('.detail.closing')].filter((d) => d.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .reduce((sum, d) => sum + d.getBoundingClientRect().height, 0);
+    const goal = window.scrollY + target() - folding;
+    window.scrollTo(0, y0 + (goal - y0) * k);
+    if (t < 1) requestAnimationFrame(step);
+  })(t0);
+}
 function toggleItem(key) {
   const el = document.querySelector('.item[data-key="' + key + '"]');
   const e = S.events.find((x) => x.key === key);
   if (!el || !e) return;
   const btn = el.querySelector('.row');
-  if (S.open.has(key)) { S.open.delete(key); el.classList.remove('open'); const d = el.querySelector('.detail'); if (d) d.remove(); btn.setAttribute('aria-expanded', 'false'); }
-  else {
-    // only one item open at a time; keep the tapped row where it is on screen
-    const y0 = btn.getBoundingClientRect().top;
-    [...S.open].forEach((k) => { if (k !== key) toggleItem(k); });
-    const dy = btn.getBoundingClientRect().top - y0; if (dy) window.scrollBy(0, dy);
-    S.open.add(key); el.classList.add('open'); el.insertAdjacentHTML('beforeend', detail(e)); btn.setAttribute('aria-expanded', 'true'); }
+  if (S.open.has(key)) {
+    S.open.delete(key); el.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
+    return shrinkOut(el.querySelector('.detail:not(.closing)'));
+  }
+  // only one item open at a time: the other one folds away while this one opens and glides up under the dates bar
+  [...S.open].forEach((k) => { if (k !== key) toggleItem(k); });
+  // tapped again while it was still folding: carry on from its current height
+  let from = 0;
+  el.querySelectorAll('.detail.closing').forEach((x) => { from = Math.max(from, x.getBoundingClientRect().height); x.remove(); });
+  S.open.add(key); el.classList.add('open'); el.insertAdjacentHTML('beforeend', detail(e)); btn.setAttribute('aria-expanded', 'true');
+  growIn(el.querySelector('.detail:not(.closing)'), from);
+  glideToTop(el);
+  return 0;
 }
 document.addEventListener('click', async (ev) => {
   const nav = ev.target.closest('a[href^="nmap://"]');
