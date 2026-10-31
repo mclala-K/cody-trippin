@@ -590,6 +590,40 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .pick-p b { font-size: .82em; line-height: 1.15; text-align: center; }
 .pick-p.on { border-color: var(--tangerine); box-shadow: 0 0 0 1.5px var(--tangerine); }
 @media (prefers-reduced-motion: reduce) { .pick-scrim, .pick-card { transition: none; } }
+
+/* ---------- v17: add your own items ---------- */
+.row .ic.t-log { background: var(--tile-warm); color: var(--tile-warm-ic); }
+.by { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--me, var(--muted)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: 0; vertical-align: 1px; margin-right: 5px; line-height: 1; }
+.detail .note { white-space: pre-line; }
+.item.flash { animation: lfflash 1.6s ease-out; }
+@keyframes lfflash { 0%, 30% { background: var(--tangerine-soft); } }
+.fab-space { height: 64px; }
+.fab { position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 7; width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--tangerine); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 16px -4px rgba(232, 118, 26, .6), 0 2px 5px rgba(0, 0, 0, .18); -webkit-tap-highlight-color: transparent; transition: transform .15s; }
+.fab svg { width: 26px; height: 26px; }
+.fab:active { transform: scale(.92); }
+.lf-card { max-height: 92vh; overflow-y: auto; display: grid; gap: 10px; }
+.lf-card p { margin: -6px 0 2px; }
+.lf-f { display: grid; gap: 4px; min-width: 0; }
+.lf-f > span { font-size: .78em; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.lf-f small { font-weight: 400; letter-spacing: 0; }
+.lf-f input, .lf-f select, .lf-f textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; width: 100%; min-width: 0; }
+.lf-f textarea { resize: vertical; min-height: 4.5em; }
+.lf-two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.lf-ph { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.lf-t, .lf-add { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.lf-t img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lf-t button { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .6); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+.lf-add { display: grid; place-items: center; align-content: center; gap: 2px; border: 1.5px dashed var(--line); background: none; color: var(--muted); cursor: pointer; }
+.lf-add input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.lf-add svg { width: 24px; height: 24px; }
+.lf-add b { font-size: .75em; }
+.lf-err { min-height: 0; }
+.lf-err:empty { display: none; }
+.lf-act { display: flex; gap: 8px; justify-content: flex-end; }
+.lf-act .go { flex: 1; }
+.lf-del { color: var(--warn); }
+.lf-del.armed { background: var(--warn); color: #fff; border-color: var(--warn); }
 </style>
 </head>
 <body>
@@ -636,6 +670,7 @@ const P = {
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
 P.Activities = P.Activity; P.Shop = P.Market;
+P.Log = '<path d="M5 4h9a2 2 0 012 2v3M16 15v5H7a2 2 0 01-2-2V4"/><path d="M8 9h5M8 13h3"/><path class="m-pen" d="M20.5 9.5l-6.5 6.5-1 3 3-1 6.5-6.5a1.4 1.4 0 00-2-2z"/>';
 const iconKey = (n) => ({ Activities: 'Activity', Shop: 'Market' })[n] || (P[n] ? n : 'Activity'); // unknown types use the hand
 const icon = (n, cls) => '<svg class="k-' + iconKey(n) + (cls ? ' ' + cls : '') + '"' + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[n] || P.Activity) + '</svg>';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -719,6 +754,7 @@ function build(data) {
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
       notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '', website: r.website || '', highlight: r.highlight || '' });
   });
+  logEvents(data).forEach((x) => ev.push(x));
   const linked = new Set((data.itinerary || []).map((r) => String(r.bookingId || '').trim()).filter(Boolean));
   (data.bookings || []).forEach((b) => {
     if (linked.has(String(b.id))) return; // shown by its itinerary row instead
@@ -1487,7 +1523,7 @@ function itemHTML(e, cur, next, n) {
     '<button class="row" data-open="' + e.key + '" aria-expanded="' + open + '">' +
     '<span class="t">' + (isAlt ? (e.status === 'Alternative' ? '<span class="tag">ALT</span>' : e.status === 'Optional' ? '<span class="tag">OPT</span>' : '') : esc(e.start || '–')) + (lab ? '<small>' + esc(lab) + '</small>' : '') + '</span>' +
     '<span class="ic t-' + esc(String(e.type || '').toLowerCase()) + '">' + icon(e.type) + '</span>' +
-    '<span class="ti"><b>' + esc(e.title) + '</b><span>' + esc(e.sub || e.area || '') + (e.driveMin ? ' · ' + e.driveMin + ' min drive' : '') + '</span>' +
+    '<span class="ti"><b>' + esc(e.title) + '</b><span>' + byTag(e) + esc(e.sub || e.area || '') + (e.driveMin ? ' · ' + e.driveMin + ' min drive' : '') + '</span>' +
     (chips ? '<span class="chips" style="justify-content:flex-start;margin-top:4px">' + chips + '</span>' : '') + '</span>' +
     icon('chev', 'chev') + '</button>' + tickBtn(e) + (open ? detail(e) : '') + '</div>';
 }
@@ -1496,6 +1532,7 @@ function detail(e) {
   const kv = [];
   if (e.start && e.status !== 'Alternative' && e.status !== 'Optional') kv.push(['Time', esc(e.start) + (e.end ? '–' + esc(e.end) : '')]);
   if (e.duration) kv.push(['Est. time', esc(e.duration)]);
+  if (e.addedBy) kv.push(['Added by', esc(e.addedBy)]);
   const wxs = wxStop(e); if (wxs) kv.push(['Weather', wxs]);
   if (e.hours) kv.push(['Hours', esc(e.hours)]);
   if (e.address) kv.push(['Address', esc(e.address)]);
@@ -1510,7 +1547,7 @@ function detail(e) {
     (hl ? '<p class="hl"><span class="hl-ic" aria-hidden="true">⭐</span><span>' + esc(hl) + '</span></p>' : '') +
     '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' +
     (e.notes ? warnOrText(e.notes) : '') +
-    '<div class="actions">' + navBtn(e) + callBtn(e.phone) + pdfBtn(b) + webBtn(e.website || (b && b.website)) + '</div></div>';
+    '<div class="actions">' + (e.logId ? editBtn(e) : navBtn(e) + callBtn(e.phone) + pdfBtn(b) + webBtn(e.website || (b && b.website))) + '</div></div>';
 }
 
 // Booking need from the sheet's "Booking need" column: 'must' | 'better' | ''
@@ -1664,7 +1701,7 @@ function render(keepScroll) {
   const y = window.scrollY;
   const slides = Array.prototype.map.call(document.querySelectorAll('.carousel .track'), (t) => Math.round(t.scrollLeft / (t.clientWidth || 1)));
   const views = { today: todayView, bookings: bookingsView, lists: listsView, info: infoView };
-  document.getElementById('app').innerHTML = header() + (views[S.tab] || todayView)() + tabs();
+  document.getElementById('app').innerHTML = header() + (views[S.tab] || todayView)() + fabHTML() + tabs();
   centerDay();
   bgHeader();
   S.wxPop = false;
@@ -1767,11 +1804,13 @@ document.addEventListener('click', async (ev) => {
     return;
   }
   if (!ev.target.closest('.wx-twc') && ev.target.closest('#wxs')) { S.wxLegend = !S.wxLegend; render(true); return; }
-  const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],[data-tk],#me,#big,#refresh');
+  const el = ev.target.closest('[data-tab],[data-day],[data-open],[data-copy],[data-tk],[data-edit-log],#fab,#me,#big,#refresh');
   if (!el) return;
   if (el.dataset.tab) { S.tab = el.dataset.tab; store.set('tab', S.tab); render(); window.scrollTo(0, 0); }
   else if (el.dataset.day) { S.day = el.dataset.day; S.open.clear(); S.wxPop = true; render(); window.scrollTo(0, 0); }
   else if (el.dataset.tk) { tapTick(el.dataset.tk); }
+  else if (el.id === 'fab') { openLogForm(); }
+  else if (el.dataset.editLog) { openLogForm(S.events.find((x) => x.key === el.dataset.editLog)); }
   else if (el.id === 'me') { openPicker(); }
   else if (el.dataset.open) { toggleItem(el.dataset.open); }
   else if (el.dataset.copy != null) {
@@ -1814,11 +1853,12 @@ function tickBtn(e) {
 }
 function meBtn() {
   if (!travellers().length) return '';
-  const pend = store.get('q:' + S.tripId, []).length;
+  const pend = pendingCount();
   return '<button class="icon-btn me' + (pend ? ' pending' : '') + '" id="me" aria-label="' + esc(S.me ? 'Ticking as ' + S.me + '. Change' : 'Who are you?') + '">' +
     (S.me ? '<span class="me-av" style="--me:' + meCol(S.me) + '">' + esc(initials(S.me)) + '</span>' : '<span class="me-av none">?</span>') + '</button>';
 }
-function updDot() { const b = document.getElementById('me'); if (b) b.classList.toggle('pending', store.get('q:' + S.tripId, []).length > 0); }
+function updDot() { const b = document.getElementById('me'); if (b) b.classList.toggle('pending', pendingCount() > 0); }
+const pendingCount = () => store.get('q:' + S.tripId, []).length + store.get('logq:' + S.tripId, []).length;
 function tapTick(key) {
   const e = S.events.find((x) => x.key === key);
   if (!e) return;
@@ -1910,18 +1950,18 @@ function openPicker(thenTick) {
   closePicker(true);
   const t = travellers();
   if (!t.length) return;
-  const pend = store.get('q:' + S.tripId, []).length;
+  const pend = pendingCount();
   const d = document.createElement('div');
   d.className = 'pick'; d.id = 'pick';
   d.innerHTML = '<div class="pick-scrim" data-pick-x></div><div class="pick-card" role="dialog" aria-modal="true" aria-labelledby="pick-h">' +
     '<button class="pick-x" data-pick-x aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
     '<h2 id="pick-h">Who’s ticking?</h2><p>Your ticks are saved under your name.</p>' +
     '<div class="pick-row">' + t.map((n) => '<button class="pick-p' + (n === S.me ? ' on' : '') + '" data-pick="' + esc(n) + '"><span class="me-av" style="--me:' + meCol(n) + '">' + esc(initials(n)) + '</span><b>' + esc(n) + '</b></button>').join('') + '</div>' +
-    (pend ? '<p class="pick-q"><span class="pdot"></span>' + pend + ' tick' + (pend > 1 ? 's' : '') + ' waiting for signal to reach the sheet</p>' : '') + '</div>';
+    (pend ? '<p class="pick-q"><span class="pdot"></span>' + pend + ' change' + (pend > 1 ? 's' : '') + ' waiting for signal to reach the sheet</p>' : '') + '</div>';
   d.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-pick],[data-pick-x]');
     if (!b) return;
-    if (b.dataset.pick) { const was = S.me; closePicker(); if (b.dataset.pick !== was) setMe(b.dataset.pick); if (thenTick) tapTick(thenTick); }
+    if (b.dataset.pick) { const was = S.me; closePicker(); if (b.dataset.pick !== was) setMe(b.dataset.pick); if (typeof thenTick === 'function') thenTick(); else if (thenTick) tapTick(thenTick); }
     else closePicker();
   });
   document.addEventListener('keydown', pickKey);
@@ -1938,6 +1978,231 @@ function closePicker(now) {
   d.classList.remove('in'); setTimeout(() => d.remove(), 220);
 }
 
+/* ---------- v17: add your own items ----------
+   Floating + (Today tab) -> form: name, day + time, notes, up to 5 photos.
+   Saved to the sheet's Log tab via Apps Script; everyone on the trip sees them, tagged with who added them;
+   only that person can edit or delete. Photos are shrunk on the phone (~1600px JPEG), kept in IndexedDB until
+   uploaded to the trip's Drive photo folder. Pending changes live in ct:logq:<trip> and are replayed over the
+   sheet's copy, so the item shows at once, with or without signal. New items arrive ticked Done for the adder. */
+const logQ = () => store.get('logq:' + (S.tripId || ''), []);
+const setLogQ = (q) => store.set('logq:' + S.tripId, q);
+const pad5 = (t) => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2, '0') + ':' + m[2] : ''; };
+S.blobs = {}; // photo id -> object URL (photos not uploaded yet)
+const PH = (() => { // tiny IndexedDB store for photos waiting to upload (memory fallback when IndexedDB is off)
+  const mem = {}; let dbp = null;
+  const db = () => dbp || (dbp = new Promise((res, rej) => {
+    try { const r = indexedDB.open('ct-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (x) { rej(x); }
+  }));
+  const tx = (mode, fn) => db().then((d) => new Promise((res, rej) => { const t = d.transaction('p', mode), q = fn(t.objectStore('p')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }));
+  return {
+    put: (k, v) => { mem[k] = v; return tx('readwrite', (st) => st.put(v, k)).catch(() => {}); },
+    get: (k) => mem[k] ? Promise.resolve(mem[k]) : tx('readonly', (st) => st.get(k)).catch(() => null),
+    del: (k) => { delete mem[k]; if (S.blobs[k]) { URL.revokeObjectURL(S.blobs[k]); delete S.blobs[k]; } return tx('readwrite', (st) => st.delete(k)).catch(() => {}); }
+  };
+})();
+const pidsOf = (item) => ((item && item.photos) || []).filter((x) => x.pid && !x.u).map((x) => x.pid);
+async function loadBlobs() { // show queued photos from this phone's storage
+  const need = [].concat(...logQ().filter((o) => o.op === 'save').map((o) => pidsOf(o.item))).filter((k) => !S.blobs[k]);
+  let got = 0;
+  for (const k of need) { const b = await PH.get(k); if (b) { S.blobs[k] = URL.createObjectURL(b); got++; } }
+  if (got && S.data) { build(S.data); render(true); }
+}
+function logEvents(data) {
+  const rows = {};
+  (data.log || []).forEach((r) => {
+    if (!r.id || !r.date || !r.start || !r.title) return;
+    rows[r.id] = { id: String(r.id), date: r.date, start: pad5(r.start), title: String(r.title), notes: String(r.notes || ''), who: String(r.addedBy || ''),
+      photos: [r.photoLink, r.photo2, r.photo3, r.photo4, r.photo5].filter(Boolean).map((u) => ({ u: String(u) })) };
+  });
+  logQ().forEach((o) => { if (o.op === 'del') delete rows[o.id]; else rows[o.item.id] = Object.assign({}, o.item, { pending: true }); });
+  return Object.values(rows).filter((it) => it.date && pad5(it.start)).map((it) => ({
+    key: 'L:' + it.id, uid: 'L:' + it.id, logId: it.id, raw: it, type: 'Log', title: it.title, date: it.date, start: pad5(it.start), end: '',
+    who: 'All', addedBy: it.who, sub: String(it.notes || '').split('\n')[0].slice(0, 80), notes: it.notes || '', status: 'Confirmed',
+    photos: it.photos.map((x) => (x.pid && S.blobs[x.pid]) ? { u: S.blobs[x.pid], c: '' } : x.u ? photoList({ photoLink: x.u })[0] : null).filter(Boolean),
+    address: '', lat: null, lng: null, nav: '', hours: '', duration: '', website: '', highlight: '', pending: !!it.pending
+  }));
+}
+function byTag(e) { return e.addedBy ? '<span class="by" style="--me:' + meCol(e.addedBy) + '" title="Added by ' + esc(e.addedBy) + '">' + esc(initials(e.addedBy)) + '</span>' : ''; }
+function editBtn(e) {
+  return e.addedBy && e.addedBy === S.me ? '<button class="btn small" data-edit-log="' + esc(e.key) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>Edit</button>' : '';
+}
+function fabHTML() {
+  return S.tab === 'today' ? '<div class="fab-space" aria-hidden="true"></div><button class="fab" id="fab" aria-label="Add an item to this day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>' : '';
+}
+// tick (or untick) one step for the current traveller, same path as a tap
+function setTickTo(uid, st, date, title) {
+  const at = Date.now();
+  S.prog[uid] = { s: st, at }; store.set(progKey(), S.prog);
+  const q = store.get('q:' + S.tripId, []).filter((o) => !(o.who === S.me && o.id === uid));
+  q.push({ who: S.me, id: uid, s: st, at, date, title }); store.set('q:' + S.tripId, q);
+  flushTicks();
+}
+async function shrinkPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.82));
+  } finally { URL.revokeObjectURL(url); }
+}
+const b64 = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+let LF = null; // the open form: { e (when editing), photos: [{u} | {pid}], fresh: [pids added in this form] }
+function openLogForm(e) {
+  if (!S.data) return;
+  if (!S.me) { openPicker(() => openLogForm(e)); return; }
+  closeLogForm(true);
+  const it = e && e.raw;
+  LF = { e, photos: it ? it.photos.map((x) => Object.assign({}, x)) : [], fresh: [], delArmed: false };
+  const n = localParts(now()), day = it ? it.date : S.day;
+  const t = it ? pad5(it.start) : (day === n.date ? n.hm.slice(0, 3) + String(Math.floor(+n.hm.slice(3) / 5) * 5).padStart(2, '0') : '');
+  const d = document.createElement('div');
+  d.className = 'pick lf'; d.id = 'lf';
+  d.innerHTML = '<div class="pick-scrim" data-lf-x></div><form class="pick-card lf-card" role="dialog" aria-modal="true" aria-labelledby="lf-h" novalidate>' +
+    '<button type="button" class="pick-x" data-lf-x aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+    '<h2 id="lf-h">' + (it ? 'Edit item' : 'Add to the day') + '</h2><p>Everyone on the trip will see it, marked <span class="by" style="--me:' + meCol(S.me) + '">' + esc(initials(S.me)) + '</span></p>' +
+    '<label class="lf-f"><span>Name</span><input name="title" maxlength="80" autocomplete="off" placeholder="e.g. Hallabong ice cream stop" value="' + esc(it ? it.title : '') + '"></label>' +
+    '<div class="lf-two"><label class="lf-f"><span>Day</span><select name="date">' + S.days.map((x) => '<option value="' + x + '"' + (x === day ? ' selected' : '') + '>' + esc(dayLabel(x)) + '</option>').join('') + '</select></label>' +
+    '<label class="lf-f"><span>Time</span><input name="start" type="time" value="' + esc(t) + '"></label></div>' +
+    '<label class="lf-f"><span>Notes</span><textarea name="notes" rows="3" maxlength="2000" placeholder="What happened, what you got, who you met…">' + esc(it ? it.notes : '') + '</textarea></label>' +
+    '<div class="lf-f"><span>Photos <small class="num" id="lf-n"></small></span><div class="lf-ph" id="lf-ph"></div></div>' +
+    '<div class="lf-err err" id="lf-err"></div>' +
+    '<div class="lf-act">' + (it ? '<button type="button" class="btn lf-del" id="lf-del">Delete</button>' : '') + '<button type="submit" class="btn go" id="lf-save">' + (it ? 'Save' : 'Add') + '</button></div></form>';
+  d.addEventListener('click', onLfClick);
+  d.querySelector('form').addEventListener('submit', (ev) => { ev.preventDefault(); saveLogForm(); });
+  document.addEventListener('keydown', lfKey);
+  document.body.appendChild(d);
+  drawLfPhotos();
+  requestAnimationFrame(() => d.classList.add('in'));
+  if (!it) setTimeout(() => { const i = d.querySelector('[name=title]'); i && i.focus({ preventScroll: true }); }, 320);
+}
+function drawLfPhotos() {
+  const box = document.getElementById('lf-ph');
+  if (!box || !LF) return;
+  const src = (x) => (x.pid && S.blobs[x.pid]) || (x.u ? photoList({ photoLink: x.u })[0].u : '');
+  box.innerHTML = LF.photos.map((x, i) => '<span class="lf-t"><img src="' + esc(src(x)) + '" alt="" referrerpolicy="no-referrer"><button type="button" data-lf-rm="' + i + '" aria-label="Remove photo">×</button></span>').join('') +
+    (LF.photos.length < 5 ? '<label class="lf-add" aria-label="Add photos"><input type="file" accept="image/*" multiple id="lf-file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><b>Add</b></label>' : '');
+  document.getElementById('lf-n').textContent = LF.photos.length + '/5';
+  const f = document.getElementById('lf-file');
+  if (f) f.addEventListener('change', async () => {
+    const files = [...f.files].slice(0, 5 - LF.photos.length);
+    const err = document.getElementById('lf-err');
+    if (f.files.length > files.length) err.textContent = 'Up to 5 photos per item.';
+    for (const file of files) {
+      try {
+        const blob = await shrinkPhoto(file), pid = 'p' + newId();
+        await PH.put(pid, blob); S.blobs[pid] = URL.createObjectURL(blob);
+        LF.photos.push({ pid }); LF.fresh.push(pid);
+      } catch (x) { err.textContent = 'That photo could not be read.'; }
+    }
+    drawLfPhotos();
+  });
+}
+function onLfClick(ev) {
+  const t = ev.target;
+  if (t.closest('[data-lf-x]')) { closeLogForm(); return; }
+  const rm = t.closest('[data-lf-rm]');
+  if (rm) { LF.photos.splice(+rm.dataset.lfRm, 1); drawLfPhotos(); return; }
+  if (t.closest('#lf-del')) {
+    const b = document.getElementById('lf-del');
+    if (!LF.delArmed) { LF.delArmed = true; b.textContent = 'Tap again to delete'; b.classList.add('armed'); return; }
+    deleteLogItem(LF.e); closeLogForm(true);
+  }
+}
+function lfKey(ev) { if (ev.key === 'Escape') closeLogForm(); }
+function closeLogForm(now, saved) {
+  const d = document.getElementById('lf');
+  document.removeEventListener('keydown', lfKey);
+  if (LF && !saved) LF.fresh.forEach((k) => PH.del(k)); // photos picked but not saved
+  LF = null;
+  if (!d) return;
+  if (now || calm()) { d.remove(); return; }
+  d.classList.remove('in'); setTimeout(() => d.remove(), 220);
+}
+function saveLogForm() {
+  const f = document.querySelector('#lf form'), err = document.getElementById('lf-err');
+  const F = (n) => f.elements.namedItem(n);
+  const title = F('title').value.trim(), date = F('date').value, start = pad5(F('start').value), notes = F('notes').value.trim();
+  if (!title) { err.textContent = 'Give it a name.'; F('title').focus(); return; }
+  if (!start) { err.textContent = 'Pick a time, so it sits in the right place in the day.'; F('start').focus(); return; }
+  const editing = LF.e && LF.e.raw, id = editing ? editing.id : newId();
+  const item = { id, date, start, title, notes, who: S.me, photos: LF.photos.map((x) => (x.u ? { u: x.u } : { pid: x.pid })), at: Date.now() };
+  // an unsent earlier version of the same item is replaced; its photos that are no longer used are dropped
+  const q = logQ(), keep = new Set(pidsOf(item));
+  q.filter((o) => o.op === 'save' && o.item.id === id).forEach((o) => pidsOf(o.item).forEach((k) => { if (!keep.has(k)) PH.del(k); }));
+  if (editing) pidsOf(editing).forEach((k) => { if (!keep.has(k)) PH.del(k); });
+  setLogQ(q.filter((o) => !(o.op === 'save' && o.item.id === id)).concat([{ op: 'save', item }]));
+  closeLogForm(false, true);
+  if (!editing) setTickTo('L:' + id, 'done', date, title); // it happened: arrives ticked
+  S.day = date; build(S.data); render(true);
+  toast(editing ? 'Saved' : 'Added');
+  const el = document.querySelector('.item[data-key="L:' + id + '"]');
+  if (el) { el.scrollIntoView({ block: 'center', behavior: calm() ? 'auto' : 'smooth' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600); }
+  flushLog();
+}
+function deleteLogItem(e) {
+  if (!e || !e.raw) return;
+  const id = e.raw.id, q = logQ();
+  q.filter((o) => o.op === 'save' && o.item.id === id).forEach((o) => pidsOf(o.item).forEach((k) => PH.del(k)));
+  const onSheet = (S.data.log || []).some((r) => String(r.id) === id);
+  setLogQ(q.filter((o) => !(o.op === 'save' && o.item.id === id)).concat(onSheet ? [{ op: 'del', id }] : []));
+  S.open.delete(e.key);
+  build(S.data); render(true); toast('Deleted');
+  flushLog();
+}
+// keep the trip's saved copy in step with what the sheet now holds (until the next full refresh)
+function mirrorLog(item, del) {
+  const rows = (S.data.log = (S.data.log || []).filter((r) => String(r.id) !== (del ? item : item.id)));
+  if (!del) { const u = item.photos.map((x) => x.u).filter(Boolean); rows.push({ id: item.id, date: item.date, start: item.start, title: item.title, notes: item.notes, addedBy: item.who, photoLink: u[0] || '', photo2: u[1] || '', photo3: u[2] || '', photo4: u[3] || '', photo5: u[4] || '' }); }
+  store.set('data:' + S.tripId, S.data);
+}
+let logBusy = false;
+async function flushLog() {
+  const id = S.tripId, entry = id && myTrips()[id];
+  if (!entry) return;
+  if (logBusy) { flushLog.again = true; return; }
+  logBusy = true;
+  let changed = false;
+  try {
+    while (true) {
+      const q = store.get('logq:' + id, []), o = q[0];
+      if (!o) break;
+      const same = (x) => x.op === o.op && (x.op === 'del' ? x.id === o.id : x.item.id === o.item.id && x.item.at === o.item.at);
+      const drop = () => { const q2 = store.get('logq:' + id, []), k = q2.findIndex(same); if (k >= 0) q2.splice(k, 1); store.set('logq:' + id, q2); };
+      if (o.op === 'save') {
+        for (const ph of o.item.photos) { // upload photos one at a time; remember each link so a retry never re-uploads
+          if (ph.u || !ph.pid) continue;
+          const blob = await PH.get(ph.pid);
+          if (!blob) continue; // lost (e.g. private browsing closed): save the item without it
+          const j = await apiPost({ action: 'photo', trip: id, code: entry.code, who: o.item.who, name: o.item.title, mime: 'image/jpeg', data: await b64(blob) });
+          if (!j || !j.ok) throw new Error('photo');
+          ph.u = j.url;
+          const q2 = store.get('logq:' + id, []), m = q2.find((x) => x.op === 'save' && x.item.id === o.item.id && x.item.at === o.item.at);
+          if (m) { m.item.photos = o.item.photos; store.set('logq:' + id, q2); }
+        }
+        const item = Object.assign({}, o.item, { photos: o.item.photos.filter((x) => x.u) });
+        const j = await apiPost({ action: 'logSave', trip: id, code: entry.code, who: item.who, item: Object.assign({}, item, { photos: item.photos.map((x) => x.u) }) });
+        if (j && j.ok) { if (S.tripId === id) mirrorLog(item); drop(); o.item.photos.forEach((x) => x.pid && PH.del(x.pid)); changed = true; }
+        else if (j && /not_yours|bad_item|bad_time|unknown_traveller/.test(j.error)) { drop(); changed = true; toast('An item could not be saved'); }
+        else break;
+      } else {
+        const j = await apiPost({ action: 'logDelete', trip: id, code: entry.code, who: S.me || '', id: o.id });
+        if (j && j.ok) { if (S.tripId === id) mirrorLog(o.id, true); drop(); changed = true; }
+        else if (j && /not_yours|unknown_traveller/.test(j.error)) { drop(); changed = true; }
+        else break;
+      }
+    }
+  } catch (x) { /* no signal or old backend: keep the queue */ }
+  logBusy = false;
+  if (changed && S.tripId === id && S.data) { build(S.data); render(true); }
+  updDot();
+  if (flushLog.again) { flushLog.again = false; return flushLog(); }
+  if (store.get('logq:' + id, []).length && !flushLog.t) flushLog.t = setTimeout(() => { flushLog.t = 0; flushLog(); }, 60000);
+}
+
 /* ---------- loading ---------- */
 async function loadTrip(id, manual) {
   const entry = myTrips()[id];
@@ -1948,6 +2213,7 @@ async function loadTrip(id, manual) {
     S.open.clear(); S.day = null; S.wxPop = true; S.tab = store.get('tab', 'today');
     S.weather = store.get('wx:' + id, {});
     loadMe(id);
+    loadBlobs();
     const cached = store.get('data:' + id, null);
     if (cached) accept(cached);
     else document.getElementById('app').innerHTML = '<div class="gate"><p>Loading trip…</p></div>';
@@ -1957,7 +2223,7 @@ async function loadTrip(id, manual) {
     if (j.ok) {
       store.set('data:' + id, j);
       const t = myTrips(); if (t[id]) { t[id].summary = summaryFrom(id, j); saveTrips(t); }
-      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(manual); syncTicks(); }
+      if (S.tripId === id) { accept(j, !fresh); if (manual) toast('Up to date'); loadWeather(manual); syncTicks(); flushLog(); loadBlobs(); }
     } else if (j.error === 'bad_passcode') {
       const t = myTrips(); delete t[id]; saveTrips(t); store.set('data:' + id, null);
       location.hash = ''; homeView('The passcode for that trip has changed. Ask Cody for the new one.');
@@ -1987,7 +2253,7 @@ function boot() {
   if (store.get('big', false)) document.documentElement.classList.add('big');
   migrateOld();
   window.addEventListener('hashchange', route);
-  window.addEventListener('online', () => flushTicks());
+  window.addEventListener('online', () => { flushTicks(); flushLog(); });
   route();
   setInterval(() => { if (S.data && S.tab === 'today') render(true); }, 60000); // keep Now/Next current
   document.addEventListener('visibilitychange', () => { if (!document.hidden && S.tripId) loadTrip(S.tripId); });
