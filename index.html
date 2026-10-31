@@ -560,9 +560,7 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .tk-c { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px var(--line); color: transparent; transition: background .2s, box-shadow .2s, color .2s; }
 .tk-c svg { width: 15px; height: 15px; }
 .tk.done .tk-c { background: var(--sea); box-shadow: none; color: #fff; }
-.tk.skip .tk-c { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--muted); color: var(--muted); }
-@media (hover: hover) { .tk:not(.done):not(.skip):hover .tk-c { color: var(--line); } }
-.item.tk-skip .row .ti b { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+@media (hover: hover) { .tk:not(.done):hover .tk-c { color: var(--line); } }
 @media (prefers-reduced-motion: no-preference) {
   .tk.pop .tk-c { animation: tkpop .42s cubic-bezier(.3, 1.7, .5, 1); }
   @keyframes tkpop { from { transform: scale(.55); } }
@@ -1791,28 +1789,28 @@ document.addEventListener('change', (ev) => {
 });
 
 /* ---------- v16: per-traveller ticks ----------
-   Each traveller ticks their own list: blank -> Done -> Skipped -> blank.
+   Each traveller ticks their own list: tap = Done, tap again = not done.
    Saved on the phone at once (ct:prog:<trip>:<who>), queued (ct:q:<trip>) and sent to the sheet's
    Progress tab in the background; no signal = it waits and sends later. Newest tap wins. */
-const TK_NEXT = { '': 'done', done: 'skip', skip: '' };
-const TK_SAY = { done: 'Done', skip: 'Skipped', '': 'Cleared' };
+const TK_NEXT = { '': 'done', done: '' };
+const TK_SAY = { done: 'Done', '': 'Not done' };
 const ME_COL = ['#E8761A', '#13706A', '#5B45A8', '#1F5FA8', '#A3346C', '#2E7D45'];
 const travellers = () => String(((S.data && S.data.trip) || {}).travellers || '').split(/\s*(?:,|·|&|\/|\band\b)\s*/).map((x) => x.trim()).filter(Boolean);
 const initials = (n) => { const w = String(n).trim().split(/\s+/); return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : String(n).slice(0, 2)).toUpperCase(); };
 const meCol = (n) => ME_COL[Math.max(0, travellers().indexOf(n)) % ME_COL.length];
 const progKey = () => 'prog:' + S.tripId + ':' + S.me;
-const tkOf = (e) => (S.me && e.uid && S.prog[e.uid] && S.prog[e.uid].s) || '';
+const tkOf = (e) => (S.me && e.uid && S.prog[e.uid] && S.prog[e.uid].s === 'done' ? 'done' : '');
 function loadMe(id) {
   S.me = store.get('me:' + id, null);
   S.prog = S.me ? store.get('prog:' + id + ':' + S.me, {}) : {};
 }
-function tickCls(e) { const t = tkOf(e); return t === 'done' ? ' tk-done' : t === 'skip' ? ' tk-skip' : ''; }
+function tickCls(e) { return tkOf(e) === 'done' ? ' tk-done' : ''; }
 function tickBtn(e) {
   const t = tkOf(e);
-  const lab = t === 'done' ? 'Done' : t === 'skip' ? 'Skipped' : 'Not done yet';
+  const lab = t === 'done' ? 'Done' : 'Not done yet';
   return '<button class="tk' + (t ? ' ' + t : '') + '" data-tk="' + esc(e.key) + '" aria-label="' + esc(e.title + ': ' + lab + '. Tap to change') + '">' +
     '<span class="tk-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    (t === 'skip' ? '<path d="M7 12h10"/>' : '<path d="M5.5 12.5l4 4 9-9.5"/>') + '</svg></span></button>';
+    '<path d="M5.5 12.5l4 4 9-9.5"/>' + '</svg></span></button>';
 }
 function meBtn() {
   if (!travellers().length) return '';
@@ -1841,7 +1839,7 @@ function paintTick(key, pop) {
   const el = document.querySelector('.item[data-key="' + key + '"]'), e = S.events.find((x) => x.key === key);
   if (!el || !e) return;
   const t = tkOf(e);
-  el.classList.toggle('tk-done', t === 'done'); el.classList.toggle('tk-skip', t === 'skip');
+  el.classList.toggle('tk-done', t === 'done');
   const b = el.querySelector(':scope > .tk');
   if (b) { b.outerHTML = tickBtn(e); if (pop && t) { const nb = el.querySelector(':scope > .tk'); nb && nb.classList.add('pop'); } }
   updDot();
