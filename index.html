@@ -547,6 +547,10 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .lb-cap span { font-size: .8rem; opacity: .78; }
 .lb.lb-drag .lb-top, .lb.lb-drag .lb-nav, .lb.lb-drag .lb-cap, .lb.lb-closing .lb-top, .lb.lb-closing .lb-nav, .lb.lb-closing .lb-cap { transition: none; }
 @media (prefers-reduced-motion: reduce) { .lb-top, .lb-nav, .lb-cap, .lb-x, .lb-nav { transition: none; } }
+/* v15: ⭐ 'what's special' line under the photos */
+.detail .hl { margin: 0; display: flex; gap: 7px; align-items: flex-start; padding: 8px 10px; border-radius: 10px;
+  background: var(--tile-warm); color: var(--ink); font-size: .92em; line-height: 1.42; }
+.detail .hl .hl-ic { flex: 0 0 auto; font-size: 1.02em; line-height: 1.38; }
 </style>
 </head>
 <body>
@@ -674,14 +678,14 @@ function build(data) {
     ev.push({ key: 'i' + i, type: r.type || 'Activity', title: r.title, date: r.date, start: r.start || '', end: r.end || '',
       label: r.timeLabel || '', who: r.who || 'All', area: r.area || '', address: r.address || '', lat: num(r.lat), lng: num(r.lng),
       nav: r.naverLink || '', driveMin: num(r.driveMin), photos: photoList(r), hours: r.hoursPrice || '',
-      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '', website: r.website || '' });
+      notes: r.notes || '', status: r.status || 'Confirmed', bookingId: r.bookingId || '', duration: r.duration || '', website: r.website || '', highlight: r.highlight || '' });
   });
   const linked = new Set((data.itinerary || []).map((r) => String(r.bookingId || '').trim()).filter(Boolean));
   (data.bookings || []).forEach((b) => {
     if (linked.has(String(b.id))) return; // shown by its itinerary row instead
     const [sd, st] = splitDT(b.start), [ed, et] = splitDT(b.end);
     const base = { bookingId: b.id, who: 'All', status: 'Booked', address: b.address || '', lat: num(b.lat), lng: num(b.lng),
-      nav: b.naverLink || '', photos: photoList(b), phone: b.phone || '', notes: b.remarks || '' };
+      nav: b.naverLink || '', photos: photoList(b), phone: b.phone || '', notes: b.remarks || '', highlight: b.highlight || '' };
     const add = (o) => ev.push(Object.assign({}, base, o));
     if (b.category === 'Flight') {
       add({ key: b.id, type: 'Flight', title: b.title, date: sd, start: st, end: ed === sd ? et : '', sub: (b.fromDepTerminal || '') + (b.toArrTerminal ? ' → ' + b.toArrTerminal : '') + ' · lands ' + et });
@@ -1462,7 +1466,9 @@ function detail(e) {
     ? '<div class="carousel"><div class="track">' + e.photos.map((p) => '<div class="slide"><img src="' + esc(p.u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer" tabindex="0" role="button" aria-label="Enlarge photo" onerror="photoFail(this)">' +
       (p.c ? '<span class="src">' + esc(p.c) + '</span>' : '') + '</div>').join('') + '</div>' + dotsHtml(e.photos.length) + '<span class="expand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></div>'
     : '';
+  const hl = e.highlight || (b && b.highlight) || '';
   return '<div class="detail">' + photos +
+    (hl ? '<p class="hl"><span class="hl-ic" aria-hidden="true">⭐</span><span>' + esc(hl) + '</span></p>' : '') +
     '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' +
     (e.notes ? warnOrText(e.notes) : '') +
     '<div class="actions">' + navBtn(e) + callBtn(e.phone) + pdfBtn(b) + webBtn(e.website || (b && b.website)) + '</div></div>';
