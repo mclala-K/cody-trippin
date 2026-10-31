@@ -494,6 +494,49 @@ body.has-bg:not(.home) .top > :not(.hdr-bg) { position: relative; z-index: 1; }
 .bk-badge.todo.soft { background: transparent; color: var(--tangerine); box-shadow: inset 0 0 0 1.5px var(--tangerine); }
 .bk-badge.ok { background: var(--sea-soft); color: var(--sea); }
 .bk-badge svg { width: 13px; height: 13px; }
+
+/* ---------- v13: photo lightbox (tap a photo to enlarge) ---------- */
+.carousel .slide { cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
+.carousel .slide img:focus-visible { outline: 3px solid var(--accent, #E8730C); outline-offset: -3px; }
+.carousel .expand { position: absolute; right: 8px; top: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: grid; place-items: center; pointer-events: none; transition: transform .18s ease, background .18s ease; }
+.carousel .expand svg { width: 15px; height: 15px; }
+@media (hover: hover) { .carousel:hover .expand { background: rgba(0, 0, 0, .72); transform: scale(1.1); } }
+
+.lb { position: fixed; inset: 0; z-index: 50; color: #fff; touch-action: none; overscroll-behavior: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.lb[hidden] { display: none; }
+.lb-scrim { position: absolute; inset: 0; background: rgba(6, 8, 8, .97); opacity: 0; }
+.lb-stage { position: absolute; inset: 0; overflow: hidden; transform-origin: 50% 50%; will-change: transform; }
+.lb-track { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }
+.lb-slide { flex: 0 0 auto; height: 100%; display: grid; place-items: center; overflow: hidden; }
+.lb-fig { position: relative; transform-origin: 50% 50%; will-change: transform; cursor: zoom-in; }
+.lb-fig img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+.lb-fly { position: fixed; z-index: 2; overflow: hidden; pointer-events: none; will-change: left, top, width, height; }
+.lb-fly img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.lb-top, .lb-nav, .lb-cap { opacity: calc(var(--lbc, 1) * var(--lbo, 1) * var(--lbn, 1)); transition: opacity .22s ease; z-index: 3; }
+.lb.lb-bare { --lbo: 0; }
+.lb.lb-bare .lb-x, .lb.lb-bare .lb-nav { pointer-events: none; }
+.lb-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; pointer-events: none;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px)) 22px calc(14px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(rgba(0, 0, 0, .55), rgba(0, 0, 0, 0)); }
+.lb-count { padding: 7px 12px; border-radius: 99px; background: rgba(255, 255, 255, .14); font-weight: 700; font-size: .92rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.lb-count[hidden] { display: none; }
+.lb-x, .lb-nav { border: 0; color: #fff; background: rgba(255, 255, 255, .16); border-radius: 50%; display: grid; place-items: center; cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; transition: opacity .22s ease, background .15s ease, transform .15s ease; }
+.lb-x { width: 46px; height: 46px; margin-left: auto; }
+.lb-nav { position: absolute; top: 50%; width: 50px; height: 50px; margin-top: -25px; display: none; }
+.lb-prev { left: calc(14px + env(safe-area-inset-left, 0px)); }
+.lb-next { right: calc(14px + env(safe-area-inset-right, 0px)); }
+.lb-nav[aria-disabled="true"] { --lbn: .3; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .lb-nav { display: grid; } .lb-x:hover, .lb-nav:hover { background: rgba(255, 255, 255, .3); } }
+.lb-x:active, .lb-nav:active { transform: scale(.9); }
+.lb-x:focus-visible, .lb-nav:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.lb-cap { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: 2px; pointer-events: none; text-align: center;
+  padding: 34px 18px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .62)); }
+.lb-cap[hidden] { display: none; }
+.lb-cap b { font-size: 1rem; text-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+.lb-cap span { font-size: .8rem; opacity: .78; }
+.lb.lb-drag .lb-top, .lb.lb-drag .lb-nav, .lb.lb-drag .lb-cap, .lb.lb-closing .lb-top, .lb.lb-closing .lb-nav, .lb.lb-closing .lb-cap { transition: none; }
+@media (prefers-reduced-motion: reduce) { .lb-top, .lb-nav, .lb-cap, .lb-x, .lb-nav { transition: none; } }
 </style>
 </head>
 <body>
@@ -682,6 +725,357 @@ function photoFail(img) { // a photo that won't load disappears instead of showi
   carouselDots(track);
 }
 document.addEventListener('scroll', (ev) => { const t = ev.target; if (t && t.classList && t.classList.contains('track')) carouselDots(t); }, true);
+/* ---------- v13: photo lightbox ----------
+   Tap a photo and it grows from its spot in the card to fill the screen (the photo morphs, so you always know where it came from).
+   Close: X button, tap the dark area, swipe down, Esc, or the phone's Back button. Swipe sideways / arrow keys to browse,
+   pinch / double-tap / mouse-wheel to zoom. Everything animates with transforms (smooth), and is skipped if "reduce motion" is on. */
+const LB = (() => {
+  const EASE = 'cubic-bezier(.22,1,.36,1)', MAXZ = 4, rm = matchMedia('(prefers-reduced-motion: reduce)');
+  const dur = (n) => (rm.matches ? 0 : n);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const delay = (n) => new Promise((r) => setTimeout(r, n));
+  const decodeP = (im) => (im && im.decode ? im.decode().catch(() => {}) : Promise.resolve());
+  const hiRes = (u) => String(u).replace(/([?&]sz=)w\d+/, '$1w1600');
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const svg = (p) => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  let root, scrim, stage, track, xBtn, prevBtn, nextBtn, cnt, capBox, capT, capC;
+  let st = null, g = null, lastTap = null, tapTimer = 0, wheelAt = 0, skipUntil = 0;
+  const P = new Map();
+  const cur = () => st.items[st.idx];
+
+  function build() {
+    if (root) return;
+    root = document.createElement('div');
+    root.className = 'lb'; root.hidden = true;
+    root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Photo viewer');
+    root.innerHTML = '<div class="lb-scrim"></div><div class="lb-stage"><div class="lb-track"></div></div>' +
+      '<div class="lb-top"><span class="lb-count" aria-live="polite"></span><button class="lb-x" type="button" aria-label="Close photo viewer">' + svg('<path d="M6 6l12 12M18 6L6 18"/>') + '</button></div>' +
+      '<button class="lb-nav lb-prev" type="button" aria-label="Previous photo">' + svg('<path d="M15 5l-7 7 7 7"/>') + '</button>' +
+      '<button class="lb-nav lb-next" type="button" aria-label="Next photo">' + svg('<path d="M9 5l7 7-7 7"/>') + '</button>' +
+      '<div class="lb-cap"><b></b><span></span></div>';
+    document.body.appendChild(root);
+    scrim = root.querySelector('.lb-scrim'); stage = root.querySelector('.lb-stage'); track = root.querySelector('.lb-track');
+    xBtn = root.querySelector('.lb-x'); prevBtn = root.querySelector('.lb-prev'); nextBtn = root.querySelector('.lb-next');
+    cnt = root.querySelector('.lb-count'); capBox = root.querySelector('.lb-cap'); capT = capBox.querySelector('b'); capC = capBox.querySelector('span');
+    xBtn.addEventListener('click', () => close());
+    prevBtn.addEventListener('click', () => go(-1));
+    nextBtn.addEventListener('click', () => go(1));
+    root.addEventListener('pointerdown', onDown);
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerup', onUp);
+    root.addEventListener('pointercancel', onUp);
+    root.addEventListener('wheel', onWheel, { passive: false });
+  }
+
+  /* ----- layout + transforms ----- */
+  function fit(it) {
+    const a = it.nw && it.nh ? it.nw / it.nh : 4 / 3;
+    let w, h;
+    if (st.W / st.H > a) { h = st.H; w = h * a; } else { w = st.W; h = w / a; }
+    it.w = w; it.h = h; it.fig.style.width = w + 'px'; it.fig.style.height = h + 'px';
+  }
+  function layout() {
+    const r = root.getBoundingClientRect();
+    st.W = r.width; st.H = r.height;
+    track.style.width = st.W * st.n + 'px';
+    st.items.forEach((it) => { it.slide.style.width = st.W + 'px'; fit(it); });
+    setTrack(-st.idx * st.W, 0);
+  }
+  function setTrack(x, ms) { st.tx = x; track.style.transition = ms ? 'transform ' + ms + 'ms ' + EASE : 'none'; track.style.transform = 'translate3d(' + x + 'px,0,0)'; }
+  function setXf(it, ms) { it.fig.style.transition = ms ? 'transform ' + ms + 'ms ' + EASE : 'none'; it.fig.style.transform = 'translate3d(' + st.px + 'px,' + st.py + 'px,0) scale(' + st.scale + ')'; }
+  function clampPan(it, s, px, py) {
+    const mx = Math.max(0, (it.w * s - st.W) / 2), my = Math.max(0, (it.h * s - st.H) / 2);
+    return [clamp(px, -mx, mx), clamp(py, -my, my)];
+  }
+  function freeze() { // stop any in-flight animation exactly where it is, so a new touch can grab it
+    const m = new DOMMatrixReadOnly(getComputedStyle(track).transform); setTrack(m.m41, 0);
+    const it = cur(), f = new DOMMatrixReadOnly(getComputedStyle(it.fig).transform);
+    st.scale = f.a || 1; st.px = f.e; st.py = f.f; setXf(it, 0);
+    const s = new DOMMatrixReadOnly(getComputedStyle(stage).transform);
+    stage.style.transition = 'none'; stage.style.transform = getComputedStyle(stage).transform;
+    return s.m42;
+  }
+  function zoomAt(cx, cy, s2, ms) {
+    const it = cur(), s1 = st.scale; s2 = clamp(s2, 1, MAXZ);
+    const ox = cx - st.W / 2, oy = cy - st.H / 2, qx = (ox - st.px) / s1, qy = (oy - st.py) / s1;
+    let px = ox - s2 * qx, py = oy - s2 * qy;
+    if (s2 === 1) { px = 0; py = 0; } else [px, py] = clampPan(it, s2, px, py);
+    st.scale = s2; st.px = px; st.py = py; setXf(it, ms);
+  }
+  function endPinch() {
+    const it = cur(), s = clamp(st.scale, 1, MAXZ);
+    if (s < 1.05) { st.scale = 1; st.px = 0; st.py = 0; }
+    else { st.scale = s; [st.px, st.py] = clampPan(it, s, st.px, st.py); }
+    setXf(it, dur(260));
+  }
+
+  /* ----- slides ----- */
+  function ui() {
+    const it = cur();
+    cnt.textContent = st.idx + 1 + ' / ' + st.n; cnt.hidden = st.n < 2;
+    capT.textContent = it.t; capC.textContent = it.c; capBox.hidden = !(it.t || it.c);
+    prevBtn.setAttribute('aria-disabled', String(st.idx === 0)); nextBtn.setAttribute('aria-disabled', String(st.idx === st.n - 1));
+    st.items.forEach((x, i) => x.slide.setAttribute('aria-hidden', String(i !== st.idx)));
+  }
+  function loadHi(it) {
+    if (!it || it.hiTried || it.hi === it.u) return;
+    it.hiTried = true;
+    const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = it.hi;
+    decodeP(im).then(() => { if (st && it.img && im.naturalWidth) it.img.src = it.hi; });
+  }
+  function hiAround(i) { [i, i + 1, i - 1].forEach((j) => loadHi(st.items[j])); }
+  function goTo(i) {
+    const old = cur();
+    if (st.scale !== 1 || st.px || st.py) { st.scale = 1; st.px = 0; st.py = 0; setXf(old, dur(260)); }
+    st.idx = i; setTrack(-i * st.W, dur(330)); ui(); hiAround(i);
+  }
+  function go(d) {
+    if (!st || st.closing || st.opening) return;
+    const i = st.idx + d;
+    if (i < 0 || i >= st.n) { // end of the set: a small elastic nudge instead of nothing
+      const base = -st.idx * st.W; setTrack(base - d * 26, dur(120)); setTimeout(() => { if (st && !st.closing) setTrack(base, dur(320)); }, dur(130)); return;
+    }
+    goTo(i);
+  }
+
+  /* ----- gestures ----- */
+  function velocity(s) {
+    if (!s || s.length < 2) return { x: 0, y: 0 };
+    const l = s[s.length - 1]; let f = s[0];
+    for (const p of s) if (l.t - p.t <= 100) { f = p; break; }
+    const dt = Math.max(l.t - f.t, 1);
+    return { x: (l.x - f.x) / dt, y: (l.y - f.y) / dt };
+  }
+  function onDown(ev) {
+    if (!st || st.closing || st.opening || ev.target.closest('.lb-x,.lb-nav')) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    try { root.setPointerCapture(ev.pointerId); } catch (e) { /* not fatal */ }
+    P.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const sy = freeze();
+    if (P.size === 1) {
+      g = { mode: 'pending', x0: ev.clientX, y0: ev.clientY, s: [{ x: ev.clientX, y: ev.clientY, t: ev.timeStamp }], type: ev.pointerType, px0: st.px, py0: st.py, sy0: sy };
+    } else if (P.size === 2) {
+      const [a, b] = [...P.values()], mx = (a.x + b.x) / 2 - st.W / 2, my = (a.y + b.y) / 2 - st.H / 2;
+      g = { mode: 'pinch', d0: dist(a, b) || 1, s0: st.scale, qx: (mx - st.px) / st.scale, qy: (my - st.py) / st.scale };
+      root.classList.remove('lb-drag');
+    }
+  }
+  function onMove(ev) {
+    if (!st || !P.has(ev.pointerId) || !g) return;
+    P.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (g.mode === 'pinch') {
+      if (P.size < 2) return;
+      const [a, b] = [...P.values()], s = clamp(g.s0 * dist(a, b) / g.d0, 0.6, MAXZ * 1.25);
+      st.scale = s; st.px = (a.x + b.x) / 2 - st.W / 2 - s * g.qx; st.py = (a.y + b.y) / 2 - st.H / 2 - s * g.qy; setXf(cur(), 0);
+      return;
+    }
+    if (g.mode === 'idle') return;
+    const x = ev.clientX, y = ev.clientY, dx = x - g.x0, dy = y - g.y0;
+    g.s.push({ x, y, t: ev.timeStamp }); if (g.s.length > 8) g.s.shift();
+    if (g.mode === 'pending') {
+      if (Math.hypot(dx, dy) < 8) return;
+      g.moved = true;
+      if (st.scale > 1.02) g.mode = 'pan';
+      else if (Math.abs(dx) > Math.abs(dy)) g.mode = 'pager';
+      else if (g.type === 'mouse') return; // a mouse drag down shouldn't dismiss
+      else { g.mode = 'dismiss'; scrim.style.transition = 'none'; root.classList.add('lb-drag'); }
+    }
+    if (g.mode === 'pager') {
+      let d = dx; if ((st.idx === 0 && d > 0) || (st.idx === st.n - 1 && d < 0)) d *= 0.33; // rubber band at the ends
+      setTrack(-st.idx * st.W + d, 0);
+    } else if (g.mode === 'dismiss') {
+      const p = clamp(Math.abs(dy) / (st.H * 0.4), 0, 1);
+      stage.style.transform = 'translate3d(0,' + (g.sy0 + dy) + 'px,0) scale(' + (1 - p * 0.1) + ')';
+      scrim.style.opacity = String(1 - p * 0.9); root.style.setProperty('--lbc', String(1 - p));
+    } else if (g.mode === 'pan') {
+      [st.px, st.py] = clampPan(cur(), st.scale, g.px0 + dx, g.py0 + dy); setXf(cur(), 0);
+    }
+  }
+  function springBack() {
+    stage.style.transition = 'transform ' + dur(320) + 'ms ' + EASE; stage.style.transform = 'translate3d(0,0,0) scale(1)';
+    scrim.style.transition = 'opacity ' + dur(300) + 'ms ease'; scrim.style.opacity = '1'; root.style.setProperty('--lbc', '1');
+  }
+  function onUp(ev) {
+    if (!st || !P.has(ev.pointerId)) return;
+    const cancel = ev.type === 'pointercancel';
+    P.delete(ev.pointerId);
+    try { root.releasePointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+    if (!g) return;
+    if (g.mode === 'pinch') {
+      endPinch();
+      if (P.size === 1 && st.scale > 1.02) { const r = [...P.values()][0]; g = { mode: 'pan', x0: r.x, y0: r.y, px0: st.px, py0: st.py, s: [], type: 'touch' }; }
+      else g = P.size ? { mode: 'idle' } : null;
+      return;
+    }
+    if (g.mode === 'idle') { if (!P.size) g = null; return; }
+    const dx = ev.clientX - g.x0, dy = ev.clientY - g.y0, v = velocity(g.s), mode = g.mode;
+    g = null;
+    if (mode === 'pending') { if (!cancel) tap(ev); }
+    else if (mode === 'pager') {
+      let i = st.idx;
+      if (!cancel) { const fast = Math.abs(v.x) > 0.4; if (dx < -st.W * 0.2 || (fast && v.x < 0 && dx < 0)) i++; else if (dx > st.W * 0.2 || (fast && v.x > 0 && dx > 0)) i--; }
+      goTo(clamp(i, 0, st.n - 1));
+    } else if (mode === 'dismiss') {
+      root.classList.remove('lb-drag');
+      if (!cancel && (Math.abs(dy) > 90 || Math.abs(v.y) > 0.55)) close({ dy }); else springBack();
+    }
+  }
+  function tap(ev) {
+    const r = cur().fig.getBoundingClientRect(), x = ev.clientX, y = ev.clientY;
+    if (!(x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)) { close(); return; } // tapped the dark area
+    if (lastTap && ev.timeStamp - lastTap.t < 320 && Math.hypot(x - lastTap.x, y - lastTap.y) < 36) { // double tap / double click
+      clearTimeout(tapTimer); lastTap = null; zoomAt(x, y, st.scale > 1.05 ? 1 : 2.5, dur(320)); return;
+    }
+    lastTap = { x, y, t: ev.timeStamp }; clearTimeout(tapTimer);
+    if (ev.pointerType !== 'mouse') tapTimer = setTimeout(() => { lastTap = null; if (st && !st.closing) root.classList.toggle('lb-bare'); }, 260); // single tap hides/shows the buttons
+  }
+  function onWheel(ev) {
+    if (!st || st.closing || st.opening) return;
+    ev.preventDefault();
+    if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY) && !ev.ctrlKey) { // trackpad two-finger sideways swipe
+      if (st.scale <= 1.02 && Math.abs(ev.deltaX) > 18 && ev.timeStamp - wheelAt > 450) { wheelAt = ev.timeStamp; go(ev.deltaX > 0 ? 1 : -1); }
+      return;
+    }
+    const s = clamp(st.scale * Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.012 : 0.0018)), 1, MAXZ);
+    if (s !== st.scale) zoomAt(ev.clientX, ev.clientY, s, 0);
+  }
+
+  /* ----- open / close ----- */
+  function makeFly(rect, src, radius) {
+    const d = document.createElement('div'), im = new Image();
+    d.className = 'lb-fly';
+    Object.assign(d.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px', borderRadius: radius + 'px' });
+    im.referrerPolicy = 'no-referrer'; im.src = src.currentSrc || src.src; im.alt = '';
+    d.appendChild(im); root.appendChild(d);
+    return d;
+  }
+  const box = (r, radius) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius + 'px' });
+  function lock() {
+    st.prevOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = 'hidden';
+    const app = document.getElementById('app'); if (app) app.inert = true;
+  }
+  function unlock() {
+    document.documentElement.style.overflow = st.prevOverflow || '';
+    const app = document.getElementById('app'); if (app) app.inert = false;
+  }
+  async function open(img, kbd) {
+    if (st || !img || !img.closest) return;
+    const car = img.closest('.carousel'); if (!car) return;
+    const imgs = [...car.querySelectorAll('.slide img')], idx = Math.max(0, imgs.indexOf(img)), holder = car.closest('[data-key]');
+    build();
+    st = { n: imgs.length, idx, items: [], tx: 0, scale: 1, px: 0, py: 0, W: 0, H: 0, car, key: holder ? holder.dataset.key : '', kbd: !!kbd, opener: img,
+      opening: true, closing: false, wantClose: false, pushed: false };
+    track.innerHTML = '';
+    imgs.forEach((im) => {
+      const u = im.currentSrc || im.src, cap = im.parentNode.querySelector('.src');
+      const it = { u, hi: hiRes(u), t: im.alt || '', c: cap ? cap.textContent : '', nw: im.naturalWidth, nh: im.naturalHeight, hiTried: false };
+      it.slide = document.createElement('div'); it.slide.className = 'lb-slide';
+      it.fig = document.createElement('div'); it.fig.className = 'lb-fig';
+      it.img = new Image(); it.img.decoding = 'async'; it.img.referrerPolicy = 'no-referrer'; it.img.alt = it.t; it.img.draggable = false; it.img.src = u;
+      it.img.addEventListener('load', () => { it.nw = it.img.naturalWidth; it.nh = it.img.naturalHeight; if (st) fit(it); });
+      it.fig.appendChild(it.img); it.slide.appendChild(it.fig); track.appendChild(it.slide); st.items.push(it);
+    });
+    lock();
+    root.classList.remove('lb-bare', 'lb-closing', 'lb-drag'); root.style.setProperty('--lbc', '0');
+    root.hidden = false; layout(); ui();
+    try { history.pushState({ lb: 1 }, ''); st.pushed = true; } catch (e) { /* not fatal */ }
+    const T = img.parentNode.getBoundingClientRect(), it = cur();
+    const F = { left: (st.W - it.w) / 2, top: (st.H - it.h) / 2, width: it.w, height: it.h };
+    scrim.style.transition = 'none'; scrim.style.opacity = '0'; void scrim.offsetWidth;
+    if (!rm.matches && T.width > 4) {
+      stage.style.opacity = '0';
+      const fly = makeFly(T, img, 10);
+      await Promise.race([decodeP(it.img), delay(160)]);
+      scrim.style.transition = 'opacity 340ms ease'; scrim.style.opacity = '1'; root.style.setProperty('--lbc', '1');
+      const a = fly.animate([box(T, 10), box(F, 0)], { duration: 380, easing: EASE, fill: 'forwards' });
+      await a.finished.catch(() => {});
+      stage.style.opacity = '1';
+      requestAnimationFrame(() => fly.remove());
+    } else {
+      stage.style.opacity = '0'; stage.style.transition = 'opacity 140ms ease'; void stage.offsetWidth;
+      scrim.style.transition = 'opacity 140ms ease'; scrim.style.opacity = '1'; stage.style.opacity = '1'; root.style.setProperty('--lbc', '1');
+      await delay(150);
+    }
+    st.opening = false;
+    try { xBtn.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    hiAround(st.idx);
+    if (st.wantClose) close();
+  }
+  function srcSlide(i) { // the carousel slide this photo lives in (the page may have re-rendered while the viewer was open)
+    let car = st.car;
+    if (!car || !car.isConnected) { car = null; if (st.key && window.CSS && CSS.escape) car = document.querySelector('[data-key="' + CSS.escape(st.key) + '"] .carousel'); }
+    const tr = car && car.querySelector('.track');
+    return tr && tr.children[i] ? { track: tr, slide: tr.children[i] } : null;
+  }
+  async function close(opts) {
+    if (!st) return;
+    if (st.opening) { st.wantClose = true; return; }
+    if (st.closing) return;
+    const s = st; s.closing = true; clearTimeout(tapTimer); g = null; P.clear(); lastTap = null;
+    const it = s.items[s.idx], R = it.fig.getBoundingClientRect();
+    if (s.pushed) { s.pushed = false; skipUntil = performance.now() + 700; history.back(); }
+    unlock();
+    const src = srcSlide(s.idx); let T = null;
+    if (src) {
+      src.track.scrollLeft = s.idx * src.track.clientWidth; // make the card show the photo you ended on
+      const r = src.slide.getBoundingClientRect();
+      if (r.width > 4 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth) T = r;
+    }
+    root.classList.add('lb-closing'); root.style.setProperty('--lbc', '0');
+    scrim.style.transition = 'opacity ' + dur(300) + 'ms ease'; scrim.style.opacity = '0';
+    if (T && !rm.matches) {
+      const fly = makeFly(R, it.img, 0);
+      await Promise.race([decodeP(fly.firstChild), delay(120)]);
+      stage.style.visibility = 'hidden';
+      const a = fly.animate([box(R, 0), box(T, 10)], { duration: 340, easing: EASE, fill: 'forwards' });
+      await a.finished.catch(() => {});
+    } else {
+      const ty = opts && opts.dy ? Math.sign(opts.dy) * s.H * 0.3 : 0;
+      stage.style.transition = 'transform ' + dur(240) + 'ms ease-in, opacity ' + dur(240) + 'ms ease-in';
+      stage.style.opacity = '0'; stage.style.transform = 'translate3d(0,' + ty + 'px,0) scale(.94)';
+      await delay(dur(250));
+    }
+    root.hidden = true; root.classList.remove('lb-closing', 'lb-bare', 'lb-drag');
+    root.querySelectorAll('.lb-fly').forEach((n) => n.remove());
+    stage.removeAttribute('style'); scrim.removeAttribute('style'); track.removeAttribute('style'); track.innerHTML = '';
+    root.style.removeProperty('--lbc');
+    st = null;
+    if (s.kbd && s.opener && s.opener.isConnected) { try { s.opener.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+
+  /* ----- wiring ----- */
+  document.addEventListener('click', (ev) => {
+    const slide = ev.target.closest && ev.target.closest('.carousel .slide');
+    if (slide) { const im = slide.querySelector('img'); if (im) open(im, ev.detail === 0); }
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (!st) {
+      const t = ev.target;
+      if ((ev.key === 'Enter' || ev.key === ' ') && t && t.matches && t.matches('.carousel .slide img')) { ev.preventDefault(); open(t, true); }
+      return;
+    }
+    if (ev.key === 'Escape') { ev.preventDefault(); close(); }
+    else if (st.opening || st.closing) return;
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); go(1); }
+    else if (ev.key === 'ArrowLeft') { ev.preventDefault(); go(-1); }
+    else if (ev.key === '+' || ev.key === '=') zoomAt(st.W / 2, st.H / 2, st.scale * 1.6, dur(240));
+    else if (ev.key === '-') zoomAt(st.W / 2, st.H / 2, st.scale / 1.6, dur(240));
+    else if (ev.key === '0') zoomAt(st.W / 2, st.H / 2, 1, dur(240));
+    else if (ev.key === 'Tab') { // keep keyboard focus inside the viewer
+      const f = [xBtn, prevBtn, nextBtn].filter((b) => b.offsetParent !== null), i = f.indexOf(document.activeElement);
+      if (!f.length) return;
+      ev.preventDefault();
+      f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+  addEventListener('popstate', () => { // phone Back button closes the viewer instead of leaving the page
+    if (performance.now() < skipUntil) { skipUntil = 0; return; }
+    if (st && !st.closing) { st.pushed = false; close(); }
+  });
+  addEventListener('resize', () => { if (st && !st.closing && !st.opening) { st.scale = 1; st.px = 0; st.py = 0; layout(); st.items.forEach((it) => { it.fig.style.transform = ''; }); } });
+  return { open, close };
+})();
+
 function nowNext() {
   const n = now();
   const cur = S.events.filter((e) => live(e) && e.t0 <= n && n < e.t1).pop() || null;
@@ -1055,8 +1449,8 @@ function detail(e) {
   if (b) kv.push(['Booking', b.refNo ? '<button class="ref mono" data-copy="' + esc(b.refNo) + '">' + esc(b.refNo) + icon('copy') + '</button>' : bkBadge(b)]);
   if (b && b.amount) kv.push([b.paid ? 'Payment' : 'Price', [b.paid, b.amount].filter(Boolean).map(esc).join(' · ')]);
   const photos = e.photos && e.photos.length
-    ? '<div class="carousel"><div class="track">' + e.photos.map((p) => '<div class="slide"><img src="' + esc(p.u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer" onerror="photoFail(this)">' +
-      (p.c ? '<span class="src">' + esc(p.c) + '</span>' : '') + '</div>').join('') + '</div>' + dotsHtml(e.photos.length) + '</div>'
+    ? '<div class="carousel"><div class="track">' + e.photos.map((p) => '<div class="slide"><img src="' + esc(p.u) + '" alt="' + esc(e.title) + '" loading="lazy" referrerpolicy="no-referrer" tabindex="0" role="button" aria-label="Enlarge photo" onerror="photoFail(this)">' +
+      (p.c ? '<span class="src">' + esc(p.c) + '</span>' : '') + '</div>').join('') + '</div>' + dotsHtml(e.photos.length) + '<span class="expand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></div>'
     : '';
   return '<div class="detail">' + photos +
     '<dl class="kv">' + kv.map((p) => '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>').join('') + '</dl>' +
